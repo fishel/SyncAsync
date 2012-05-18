@@ -12,7 +12,7 @@ translate from and to); the output of translate.php is an integer job ID or -1 f
 2. job status can be checked via checkresults.php?id=123, where 123 is the job ID that translate.php returned;
 the output of checkresults.php is either 0 (pending), 1 (done) or 2 (error)
 
-3. the translated file can retrieved via getresults.php?id=123, where 123 is the job ID that translate.php returned;
+3. once the job is done, the translated file can be retrieved via getresults.php?id=123, where 123 is the job ID that translate.php returned;
 NB! after the retrieval the result is deleted, so a single job output can be retrieved only once
 
 INSTALLATION:
