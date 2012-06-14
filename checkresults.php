@@ -25,7 +25,7 @@ $filename = $jobInfo['filename'];
 #a "done" message
 if ($forHumans) {
 	if ($outcome == 1) {
-		print "<p>Translation of `$filename' has finished, you can <a href=\"getresults.php?id=$id\">download</a> the result</p>";
+		print "<p>Translation of `$filename' has finished, you can <a href=\"getresults.php?id=$id&human=1\">download</a> the result</p>";
 	}
 	#if it is still being translated, print a code for the machine-readable
 	#version, or the progress for the human-readable version

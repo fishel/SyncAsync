@@ -6,7 +6,7 @@
 	$workDir = "/home/mfishel/offweb/translations";
 
 	#translation script path
-	$trScript = "/home/mfishel/www/sumat/translate_file.pl";
+	$trScript = "/home/mfishel/www/sumat/trsrvdemo/translate_file.pl";
 
 	#support 2 kinds of output -- human-readable and machine-readable
 	$forHumans = isset($_GET['human']);
