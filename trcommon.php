@@ -1,15 +1,21 @@
 <?
+	$config = loadConfig();
+	
 	#path to the SQLite DB file
-	$dbPath = "/home/mfishel/offweb/db/trids.sqlite";
+	$dbPath = $config["db path"];
 
 	#base path where translation job directories will be created
-	$workDir = "/home/mfishel/offweb/translations";
+	$workDir = $config["work dir"];
 
 	#translation script path
-	$trScript = "/home/mfishel/www/sumat/trsrvdemo/translate_file.pl";
+	$trScript = $config["translation script"];
 
 	#support 2 kinds of output -- human-readable and machine-readable
 	$forHumans = isset($_GET['human']);
+	
+	if (!$forHumans) {
+		die("-1\nService in reconstruction");
+	}
 	
 	#####
 	# prepare a connection to the SQLite database for job ID management
@@ -58,5 +64,75 @@
 		
 		$stmt->execute(array($id))
 			or die($forHumans? "Failed to execute statement": $ERROR_CODE);
+	}
+	
+	#####
+	#
+	#####
+	function loadConfig() {
+		$result = array();
+		
+		$configFilePath = "config.ini";
+		
+		$fh = @fopen($configFilePath, "r");
+		
+		if ($fh) {
+			while (($buffer = fgets($fh)) !== false) {
+				$normBuf = normalize($buffer);
+				
+				if (strlen($normBuf) == 0 or substr($normBuf, 0, 1) == "#") {
+					#empty or comment line, do nothing
+				}
+				else if (preg_match('/^([^=]+)=(.*)$/', $normBuf, $matches)) {
+					$key = trim($matches[1]);
+					$value = trim($matches[2]);
+					
+					if (!$value) {
+						$value = readMultilineValue($fh);
+					}
+					
+					$result[$key] = $value;
+				}
+				else {
+					die("Failed to parse config line `$normBuf'");
+				}
+			}
+			if (!feof($fh)) {
+				die("Failed to read the config file");
+			}
+			
+			fclose($fh);
+		}
+		else {
+			die("Failed to open the config file");
+		}
+		
+		return $result;
+	}
+	
+	#####
+	#
+	#####
+	function readMultilineValue($fh) {
+		$val = "";
+		
+		$buf = fgets($fh);
+		$tbuf = trim($buf);
+		
+		while ($buf !== false and strlen($tbuf) > 0 and substr($tbuf, 0, 1) != "#") {
+			$val .= $tbuf . "\n";
+			
+			$buf = fgets($fh);
+			$tbuf = trim($buf);
+		}
+		
+		return $val;
+	}
+	
+	#####
+	#
+	#####
+	function normalize($str) {
+		return preg_replace('/\s+/', ' ', trim($str));
 	}
 ?>

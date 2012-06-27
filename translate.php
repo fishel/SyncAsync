@@ -6,10 +6,6 @@ include("trcommon.php");
 #error code to print in case of errors
 $ERROR_CODE = "-1";
 
-#language pairs, supported by the translation server: short and long format
-$langPairs = array(
-	"de-en" => "German-English");
-
 #backup functionality: if there's no POST request, show a simple HTML form for submitting files;
 #works only for the human-readable version
 if ($_POST and $_FILES) {
@@ -97,7 +93,7 @@ function startTranslation($fileInfo, $langPair, $db) {
 	
 	#start the background translation script
 	$status = exec(sprintf("%s > %s 2>&1 &",
-		"$trScript \"$langPair\" \"$jobPath\" $jobId",
+		"$trScript \"$langPair\" \"$jobId\"",
 		"$workDir/$jobId/logfile"));
 	
 	#check if successful
@@ -141,7 +137,8 @@ function reportResults($jobIdList) {
 #
 #####
 function displayFileUploadForm() {
-	global $langPairs;
+	#just for demo purposes
+	$langPairs = array("de-en" => "German-English"); 
 ?>
 
 <html>
