@@ -1,0 +1,6 @@
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE trids(id integer primary key autoincrement, filename text, is_done integer not null);
+DELETE FROM sqlite_sequence;
+INSERT INTO "sqlite_sequence" VALUES('trids',1);
+COMMIT;

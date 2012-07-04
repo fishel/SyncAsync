@@ -22,7 +22,7 @@ NB! after the retrieval the result is deleted, so a single job output can be ret
 INSTALLATION:
 - place the \*.php files into the server directory
 - place the translate\_file.pl script somewhere
-- place the trids.sqlite somewhere invisible to the web
+- create an SQLite database and fill it with the db-dump.txt dump file
 - create a directory for translation jobs; its permissions have to allow the server to modify it
 - copy config.ini_example to config.ini in your server directory and NB! define the correct values
   for the configuration fields for your server
