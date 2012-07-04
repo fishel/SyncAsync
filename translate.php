@@ -110,7 +110,7 @@ function startTranslation($fileInfo, $langPair, $db) {
 #
 #####
 function reportResults($jobIdList) {
-	global $forHumans, $ERROR_CODE;
+	global $forHumans, $ERROR_CODE, $config;
 	
 	#multiple file processing is currently switched off
 	if (count(array_keys($jobIdList)) != 1) {
@@ -119,8 +119,15 @@ function reportResults($jobIdList) {
 	
 	#if the "human" flag is set, report the results in a human-readable way
 	else if ($forHumans) {
-		foreach ($jobIdList as $jobId => $filename) {
-			print "<p>$filename is being translated, you can check for results at this <a href=\"checkresults.php?human=1&id=$jobId\">URL</a></p>";
+		
+		#call-back was to be done
+		if ($config['call-back url']) {
+			print "<p>A call-back will be performed once the file is translated</p>";
+		}
+		else {
+			foreach ($jobIdList as $jobId => $filename) {
+				print "<p>$filename is being translated, you can check for results at this <a href=\"checkresults.php?human=1&id=$jobId\">URL</a></p>";
+			}
 		}
 		
 		print "<p>or you can go <a href=\"translate.php?human=1\">back</a></p>";
@@ -139,8 +146,6 @@ function reportResults($jobIdList) {
 #
 #####
 function displayFileUploadForm() {
-	#just for demo purposes
-	$langPairs = array("de-en" => "German-English"); 
 ?>
 
 <html>
@@ -163,8 +168,11 @@ function displayFileUploadForm() {
 			<select name="langpair">
 
 <?
+	#just for demo purposes
+	$langPairs = array("de-en" => "German-English"); 
+	
 	foreach ($langPairs as $short => $full) {
-		print "<option value=\"$short\">$full</option>\n";
+		print "\t\t\t<option value=\"$short\">$full</option>\n";
 	}
 ?>
 

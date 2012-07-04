@@ -149,7 +149,7 @@ sub finalizeRecasing {
 	for my $inWord (@inWords) {
 		push @outWords, ($nextUp? ucfirst($inWord): $inWord);
 		
-		$nextUp = ($inWord =~ /^[[:punct:]]$/)
+		$nextUp = ($inWord =~ /^[.?!]$/)
 	}
 	
 	return join(" ", @outWords);
