@@ -81,8 +81,10 @@ function getNewId($db, $filename) {
 function startTranslation($fileInfo, $langPair, $db) {
 	global $workDir, $trScript, $forHumans, $ERROR_CODE;
 	
+	$origFileName = $fileInfo['name'];
+	
 	#get the new job ID via DB
-	$jobId = getNewId($db, $fileInfo['name']);
+	$jobId = getNewId($db, $origFileName);
 	$jobPath = "$workDir/$jobId";
 	
 	#create a folder for the translation job, named after the job ID
@@ -93,7 +95,7 @@ function startTranslation($fileInfo, $langPair, $db) {
 	
 	#start the background translation script
 	$status = exec(sprintf("%s > %s 2>&1 &",
-		"$trScript \"$langPair\" \"$jobId\"",
+		"$trScript \"$langPair\" \"$jobId\" \"$origFileName\"",
 		"$workDir/$jobId/logfile"));
 	
 	#check if successful
