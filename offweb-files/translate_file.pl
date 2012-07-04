@@ -6,11 +6,12 @@ use DBI;
 use WWW::Curl::Form;
 use WWW::Curl::Easy;
 use utf8;
+use FindBin qw($Bin);
 
 #####################################################
 
 # load configuration
-my $config = confLoad("config.ini");
+my $config = confLoad($Bin . "/config.ini");
 
 # load command-line arguments: language pair, job numeric ID, filename of the submitted file
 my ($langPair, $jobId, $origFilename) = @ARGV;

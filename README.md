@@ -27,3 +27,4 @@ INSTALLATION:
 - copy offweb-files/config.ini_example to offweb-files/config.ini and NB! define the correct values
   for the configuration fields for your server, specifying the location of this package for the
   translate_file.pl script, the database, etc.
+- set the path to config.ini in the beginning of your server-files/trcommon.php
