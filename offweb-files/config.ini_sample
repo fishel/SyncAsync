@@ -39,8 +39,6 @@ tokenizer = /home/mfishel/offweb/scripts/tokenization/tokenizer-modified
 # location of the de-tokenizer script
 detokenizer = /home/mfishel/offweb/scripts/detokenizer.perl
 
-# address of the call-back host
-call-back url = http://terra.cl.uzh.ch/trsrvdemo/call-back-test-tgt.php
-
-# e-mail address for the call-back e-mail -- NOT IMPLEMENTED YET
-#call-back e-mail = william.shakespeare@gmail.com
+# address of the call-back host; if not set, no call-back will be performed
+# and results will have to be retrieved via checkresults.php and getresults.php
+#call-back url = http://terra.cl.uzh.ch/trsrvdemo/call-back-test-tgt.php
