@@ -8,50 +8,64 @@ use WWW::Curl::Easy;
 use utf8;
 use FindBin qw($Bin);
 
-#####################################################
+# load command-line arguments: language pair, job numeric ID, filename of the submitted file
+my ($langPair, $jobId, $origFilename) = @ARGV;
 
 # load configuration
 my $config = confLoad($Bin . "/config.ini");
 
-# load command-line arguments: language pair, job numeric ID, filename of the submitted file
-my ($langPair, $jobId, $origFilename) = @ARGV;
+# exception handling: in case of exceptions update status to error and/or perform an error call-back
+eval {
+	# main file processing (tokenization, translation, reporting, etc.) is done here
+	processFile($langPair, $jobId, $origFilename, $config);
+};
 
-# check if the language pair is set up in the configuration
-checkLangPair($config, $langPair);
-
-# initialize filenames for intermediate files
-my $tmpFilenames = initTmpFilenames($config, $jobId);
-
-# tokenize input using the configurated external script
-doTokenization($config, $tmpFilenames, $langPair);
-
-##### translate and re-case input #####
-
-# prepare proxies for translation and re-casing
-my $translProxy = getProxy($config, 'translation host list', $langPair);
-my $recaseProxy = getProxy($config, 'recasing host list', $langPair);
-
-# open input and output files
-my $inFh = fopen($tmpFilenames->{'tok'});
-my $outFh = fopen(">" . $tmpFilenames->{'rawtrans'});
-
-while (my $text = <$inFh>) {
-	# peroform lower-casing, translation and re-casing
-	my $outText = translate($config, $text, $translProxy, $recaseProxy);
+# if an error has occured, report it
+if ($@) {
+	my $errMsg = join("/", $@);
 	
-	print $outFh $outText . "\n";
+	complain($config, $jobId, $origFilename, $errMsg);
 }
 
-close($outFh);
-close($inFh);
-
-# de-tokenize output using the configurated external script
-doDeTokenization($config, $tmpFilenames, $langPair);
-
-# report results by either performing a call-back (if the host is configured) or by updating the job the status
-reportResults($config, $jobId, $tmpFilenames, $origFilename);
-
 #####################################################
+sub processFile {
+	my ($langPair, $jobId, $origFilename, $config) = @_;
+
+	# check if the language pair is set up in the configuration
+	checkLangPair($config, $langPair);
+
+	# initialize filenames for intermediate files
+	my $tmpFilenames = initTmpFilenames($config, $jobId);
+
+	# tokenize input using the configurated external script
+	doTokenization($config, $tmpFilenames, $langPair);
+
+	##### translate and re-case input #####
+
+	# prepare proxies for translation and re-casing
+	my $translProxy = getProxy($config, 'translation host list', $langPair);
+	my $recaseProxy = getProxy($config, 'recasing host list', $langPair);
+
+	# open input and output files
+	my $inFh = fopen($tmpFilenames->{'tok'});
+	my $outFh = fopen(">" . $tmpFilenames->{'rawtrans'});
+
+	while (my $text = <$inFh>) {
+		# peroform lower-casing, translation and re-casing
+		my $outText = translate($config, $text, $translProxy, $recaseProxy);
+		
+		print $outFh $outText . "\n";
+	}
+
+	close($outFh);
+	close($inFh);
+
+	# de-tokenize output using the configurated external script
+	doDeTokenization($config, $tmpFilenames, $langPair);
+
+	# report results by either performing a call-back (if the host is configured) or by updating the job the status
+	reportResults($config, $jobId, $tmpFilenames, $origFilename);
+}
 
 #####
 #
@@ -74,8 +88,7 @@ sub communicate {
 	my $rawTextMode = confBool($config->{'raw text mode'});
 	
 	if ($rawTextMode) {
-		#TODO ALS, please insert your communication code here
-		die("TODO");
+		die("raw text mode communication not implemented yet");
 	}
 	else {
 		my $encoded = SOAP::Data->type(string => Encode::encode("utf8", $text));
@@ -213,6 +226,15 @@ sub logHash {
 #####
 #
 #####
+sub setErrorStatus {
+	my ($dbh, $jobId) = @_;
+	
+	$dbh->do("update trids set is_done = 2 where id = $jobId");
+}
+
+#####
+#
+#####
 sub saveStatus {
 	my ($dbh, $jobId) = @_;
 	
@@ -227,6 +249,7 @@ sub cleanup {
 	
 	$dbh->do("delete from trids where id = $jobId");
 	
+	# this is commented out for debugging purposes
 	#system("rm -r $jobPath");
 }
 
@@ -234,14 +257,20 @@ sub cleanup {
 #
 #####
 sub performCallBack {
-	my ($jobId, $resultPath, $origFilename) = @_;
+	my ($jobId, $origFilename, $resultPath, $errorMessage) = @_;
 	
 	my $curl = WWW::Curl::Easy->new;
 
 	my $curlForm = WWW::Curl::Form->new;
-	$curlForm->formaddfile($resultPath, "file", "multipart/form-data");
 	$curlForm->formadd("requestID", "" . $jobId);
 	$curlForm->formadd("fileName", $origFilename);
+	
+	if (defined($resultPath)) {
+		$curlForm->formaddfile($resultPath, "file", "multipart/form-data");
+	}
+	else {
+		$curlForm->formadd("error", $errorMessage);
+	}
 
 	$curl->setopt(CURLOPT_HTTPPOST, $curlForm);
 
@@ -258,6 +287,8 @@ sub performCallBack {
 		die("An error happened at call-back: $retcode " .
 			$curl->strerror($retcode) . "; " . $curl->errbuf . "\n");
 	}
+	
+	print "DEBUG: call-back server response:\n$response_body\n";
 }
 
 #####
@@ -393,18 +424,29 @@ sub reCase {
 #####
 #
 #####
+sub connectDb {
+	my ($config) = @_;
+	
+	my $dbPath = $config->{'db path'};
+	my $dbh = DBI->connect("dbi:SQLite:dbname=$dbPath","","");
+	
+	return $dbh;
+}
+
+#####
+#
+#####
 sub reportResults {
 	my ($config, $jobId, $tmpNames, $origFilename) = @_;
 	
 	my $jobPath = $config->{'work dir'} . "/" . $jobId;
 	
 	# initialize a DB connection
-	my $dbPath = $config->{'db path'};
-	my $dbh = DBI->connect("dbi:SQLite:dbname=$dbPath","","");
+	my $dbh = connectDb($config);
 	
 	# if the call-back URL is defined, perform call-back
 	if (defined($config->{'call-back url'})) {
-		performCallBack($jobId, $tmpNames->{'detok'}, $origFilename);
+		performCallBack($jobId, $origFilename, $tmpNames->{'detok'});
 		
 		#delete the directory and update the status
 		cleanup($dbh, $jobId, $jobPath);
@@ -449,5 +491,23 @@ sub translate {
 		
 		# return the re-cased translation
 		return $recasedOut;
+	}
+}
+
+#####
+#
+#####
+sub complain {
+	my ($config, $jobId, $origFilename, $errMsg) = @_;
+	
+	# connect to DB
+	my $dbh = connectDb($config);
+	
+	# update job status to "error"
+	setErrorStatus($dbh, $jobId);
+	
+	# if call-back defined, send back erroneous call-back
+	if (defined($config->{'call-back url'})) {
+		performCallBack($jobId, $origFilename, undef, $errMsg);
 	}
 }
