@@ -1,5 +1,6 @@
 <?
-	$config = loadConfig();
+	# NB! set the path to your config file here:
+	$config = loadConfig("/home/mfishel/offweb/trsrvdemo/offweb-files/config.ini");
 	
 	#path to the SQLite DB file
 	$dbPath = $config["db path"];
@@ -69,10 +70,8 @@
 	#####
 	#
 	#####
-	function loadConfig() {
+	function loadConfig($configFilePath) {
 		$result = array();
-		
-		$configFilePath = "config.ini";
 		
 		$fh = @fopen($configFilePath, "r");
 		

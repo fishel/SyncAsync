@@ -20,9 +20,10 @@ the output of checkresults.php is either 0 (pending), 1 (done) or 2 (error)
 NB! after the retrieval the result is deleted, so a single job output can be retrieved only once
 
 INSTALLATION:
-- place the \*.php files into the server directory
-- place the translate\_file.pl script somewhere
-- create an SQLite database and fill it with the db-dump.txt dump file
+- place the \*.php files from the server-files directory into the server directory; alternatively,
+  link to the server-files directory
+- create an SQLite database and fill it with the offweb-files/db-dump.txt dump file
 - create a directory for translation jobs; its permissions have to allow the server to modify it
-- copy config.ini_example to config.ini in your server directory and NB! define the correct values
-  for the configuration fields for your server
+- copy offweb-files/config.ini_example to offweb-files/config.ini and NB! define the correct values
+  for the configuration fields for your server, specifying the location of this package for the
+  translate_file.pl script, the database, etc.
