@@ -36,17 +36,10 @@ my $inFh = fopen($tmpFilenames->{'tok'});
 my $outFh = fopen(">" . $tmpFilenames->{'rawtrans'});
 
 while (my $text = <$inFh>) {
-	# lower-case
-	my $lcText = lowerCase($config, $text);
-
-	# translate
-	my $rawOut = communicate($config, $translProxy, $lcText);
+	# peroform lower-casing, translation and re-casing
+	my $outText = translate($config, $text, $translProxy, $recaseProxy);
 	
-	# re-case
-	my $recasedOut = reCase($config, $rawOut, $recaseProxy);
-	
-	# output the result
-	print $outFh $recasedOut . "\n";
+	print $outFh $outText . "\n";
 }
 
 close($outFh);
@@ -77,8 +70,6 @@ sub fopen {
 #####
 sub communicate {
 	my ($config, $proxy, $text) = @_;
-	
-	$text =~ s/[\r\n]//g;
 	
 	my $rawTextMode = confBool($config->{'raw text mode'});
 	
@@ -299,9 +290,7 @@ sub initTmpFilenames {
 	# toklog = log file of the tokenizer
 	# detoklog = log file of the de-tokenizer
 	
-	# timecodes = timecode file
-	
-	return {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok rawtrans detok toklog detoklog timecodes)};
+	return {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok rawtrans detok toklog detoklog)};
 }
 
 #####
@@ -424,5 +413,41 @@ sub reportResults {
 	# otherwise, save status for retrieval via getresults.php
 	else {
 		saveStatus($dbh, $jobId);
+	}
+}
+
+#####
+#
+#####
+sub translate {
+	my ($config, $text, $translProxy, $recaseProxy) = @_;
+	
+	$text =~ s/[\r\n]//g;
+	
+	# empty lines are not translated
+	if ($text =~ /^\s*$/) {
+		return "";
+	}
+	# time-codes for the TXT-format subtitle files are translated verbatim
+	elsif ($text =~ /^(\d+) (\d{2} : \d{2} : \d{2} : \d{2}) (\d{2} : \d{2} : \d{2} : \d{2})$/) {
+		my ($idx, $from, $to) = ($1, $2, $3);
+		
+		$from =~ s/ //g;
+		$to =~ s/ //g;
+		
+		return "$idx\t$from\t$to";
+	}
+	else {
+		# lower-case
+		my $lcText = lowerCase($config, $text);
+
+		# translate
+		my $rawOut = communicate($config, $translProxy, $lcText);
+		
+		# re-case
+		my $recasedOut = reCase($config, $rawOut, $recaseProxy);
+		
+		# return the re-cased translation
+		return $recasedOut;
 	}
 }
