@@ -49,12 +49,14 @@ sub processFile {
 	# open input and output files
 	my $inFh = fopen($tmpFilenames->{'tok'});
 	my $outFh = fopen(">" . $tmpFilenames->{'rawtrans'});
-
-	while (my $text = <$inFh>) {
-		# peroform lower-casing, translation and re-casing
-		my $outText = translate($config, $text, $translProxy, $recaseProxy);
+	
+	for my $cell (readSubtitles($inFh)) {
 		
-		print $outFh $outText . "\n";
+		
+		# perform lower-casing, translation and re-casing
+		my $outText = translate($config, $cell->{'text'}, $translProxy, $recaseProxy);
+		
+		displayResults($outFh, $cell, $outText);
 	}
 
 	close($outFh);
@@ -77,6 +79,20 @@ sub fopen {
 	binmode($fh, ':utf8');
 	
 	return $fh;
+}
+
+#####
+#
+#####
+sub displayResults {
+	my ($outFh, $cell, $translation) = @_;
+	
+	my $timeCodedOutput = (defined($cell->{'timecode'}));
+	
+	print $outFh 
+		($timeCodedOutput? $cell->{'timecode'} . "\n": "") .
+		$translation . "\n" .
+		($timeCodedOutput? "\n": "");
 }
 
 #####
@@ -464,34 +480,17 @@ sub reportResults {
 sub translate {
 	my ($config, $text, $translProxy, $recaseProxy) = @_;
 	
-	$text =~ s/[\r\n]//g;
+	# lower-case
+	my $lcText = lowerCase($config, $text);
 	
-	# empty lines are not translated
-	if ($text =~ /^\s*$/) {
-		return "";
-	}
-	# time-codes for the TXT-format subtitle files are translated verbatim
-	elsif ($text =~ /^(\d+) (\d{2} : \d{2} : \d{2} : \d{2}) (\d{2} : \d{2} : \d{2} : \d{2})$/) {
-		my ($idx, $from, $to) = ($1, $2, $3);
-		
-		$from =~ s/ //g;
-		$to =~ s/ //g;
-		
-		return "$idx\t$from\t$to";
-	}
-	else {
-		# lower-case
-		my $lcText = lowerCase($config, $text);
-
-		# translate
-		my $rawOut = communicate($config, $translProxy, $lcText);
-		
-		# re-case
-		my $recasedOut = reCase($config, $rawOut, $recaseProxy);
-		
-		# return the re-cased translation
-		return $recasedOut;
-	}
+	# translate
+	my $rawOut = communicate($config, $translProxy, $lcText);
+	
+	# re-case
+	my $recasedOut = reCase($config, $rawOut, $recaseProxy);
+	
+	# return the re-cased translation
+	return $recasedOut;
 }
 
 #####
@@ -510,4 +509,58 @@ sub complain {
 	if (defined($config->{'call-back url'})) {
 		performCallBack($jobId, $origFilename, undef, $errMsg);
 	}
+}
+
+#####
+#
+#####
+sub readSubtitles {
+	my ($inFh) = @_;
+	
+	my @rawLines = map { s/[\n\r]//g; $_ } <$inFh>;
+	my @result;
+	
+	my $hasTimeCodes = ($rawLines[0] =~ /^\d+(\s+\d{2}(\s*:\s*\d{2}){3}){2}$/);
+	
+	print "DEBUG has time codes: $hasTimeCodes;\n";
+	
+	if ($hasTimeCodes) {
+		my $cell = {};
+		
+		for my $line (@rawLines) {
+			if ($line =~ /^(\d+)\s+(\d{2}(?:\s*:\s*\d{2}){3})\s+(\d{2}(?:\s*:\s*\d{2}){3})$/) {
+				my ($idx, $from, $to) = ($1, $2, $3);
+				
+				$from =~ s/ //g;
+				$to =~ s/ //g;
+				
+				$cell->{'timecode'} = "$idx\t$from\t$to";
+			}
+			elsif ($line =~ /^\s*$/) {
+				$cell->{'text'} =~ s/\s+/ /g;
+				$cell->{'text'} =~ s/^ //g;
+				$cell->{'text'} =~ s/ $//g;
+				
+				push @result, $cell;
+				
+				$cell = {};
+			}
+			else {
+				$cell->{'text'} .= " " . $line;
+			}
+		}
+		
+		if ($cell->{'text'}) {
+			$cell->{'text'} =~ s/\s+/ /g;
+			$cell->{'text'} =~ s/^ //g;
+			$cell->{'text'} =~ s/ $//g;
+			
+			push @result, $cell;
+		}
+	}
+	else {
+		@result = map { {'text' => $_ } } @rawLines;
+	}
+	
+	return @result;
 }
