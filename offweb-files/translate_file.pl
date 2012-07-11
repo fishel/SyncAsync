@@ -7,6 +7,9 @@ use WWW::Curl::Form;
 use WWW::Curl::Easy;
 use utf8;
 use FindBin qw($Bin);
+use Time::HiRes qw(gettimeofday);
+
+print "starting translation\n";
 
 # load command-line arguments: language pair, job numeric ID, filename of the submitted file
 my ($langPair, $jobId, $origFilename) = @ARGV;
@@ -44,20 +47,30 @@ sub processFile {
 
 	# prepare proxies for translation and re-casing
 	my $translProxy = getProxy($config, 'translation host list', $langPair);
-	my $recaseProxy = getProxy($config, 'recasing host list', $langPair);
+	
+	my ($srcLang, $tgtLang) = split(/-/, $langPair);
+	my $recaseProxy = getProxy($config, 'recasing host list', $tgtLang);
 
 	# open input and output files
 	my $inFh = fopen($tmpFilenames->{'tok'});
 	my $outFh = fopen(">" . $tmpFilenames->{'rawtrans'});
 	
-	for my $cell (readSubtitles($inFh)) {
-		
-		
+	my @subs = readSubtitles($inFh);
+	
+	my $t0 = gettime();
+	
+	my $tInter = 0;
+	
+	for my $cell (@subs) {
 		# perform lower-casing, translation and re-casing
 		my $outText = translate($config, $cell->{'text'}, $translProxy, $recaseProxy);
 		
 		displayResults($outFh, $cell, $outText);
 	}
+
+	my $t1 = gettime();
+	
+	print "DEBUG total translation time: " . ($t1 - $t0) . "; #subs: " . (scalar @subs) . "\n";
 
 	close($outFh);
 	close($inFh);
@@ -67,6 +80,15 @@ sub processFile {
 
 	# report results by either performing a call-back (if the host is configured) or by updating the job the status
 	reportResults($config, $jobId, $tmpFilenames, $origFilename);
+}
+
+#####
+#
+#####
+sub gettime {
+	my ($sec, $msec) = gettimeofday();
+	
+	return $sec + $msec/1000000.0;
 }
 
 #####
@@ -313,11 +335,13 @@ sub performCallBack {
 sub checkLangPair {
 	my ($conf, $lp) = @_;
 	
+	my ($srcLang, $tgtLang) = split(/-/, $lp);
+	
 	my $translHostList = confHash($conf->{'translation host list'});
 	my $recaseHostList = confHash($conf->{'recasing host list'});
 	
-	unless (defined($translHostList->{$lp}) and defined($recaseHostList->{$lp})) {
-		die("Failed to locate port for language pair `$lp'");
+	unless (defined($translHostList->{$lp}) and defined($recaseHostList->{$tgtLang})) {
+		die("Failed to locate port for language pair `$lp'/`$tgtLang'");
 	}
 }
 
@@ -498,6 +522,9 @@ sub translate {
 #####
 sub complain {
 	my ($config, $jobId, $origFilename, $errMsg) = @_;
+	
+	# display error message
+	print "ERROR: $errMsg;\n";
 	
 	# connect to DB
 	my $dbh = connectDb($config);

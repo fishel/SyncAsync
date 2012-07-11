@@ -13,14 +13,14 @@ de-en http://localhost:1984/RPC2
 fr-es http://localhost:1994/RPC2
 de-ja http://localhost:1998/RPC2
 
-# list of language pairs with their Moses server
+# list of target languages with their Moses server
 # hosts and ports for re-casing
 # (entries separated by new-line, fields separated
 # by any number of spaces or tabs)
 recasing host list =
-de-en http://localhost:1985/RPC2
-fr-es http://localhost:1995/RPC2
-de-ja http://localhost:1999/RPC2
+en http://localhost:1985/RPC2
+es http://localhost:1995/RPC2
+ja http://localhost:1999/RPC2
 
 # if set to "true", no tokenization, lower-casing,
 # recasing and detokenization will be done; also
