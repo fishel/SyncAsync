@@ -25,9 +25,7 @@ eval {
 
 # if an error has occured, report it
 if ($@) {
-	my $errMsg = join("/", $@);
-	
-	complain($config, $jobId, $origFilename, $errMsg);
+	complain($config, $jobId, $origFilename, $@);
 }
 
 #####################################################
@@ -59,11 +57,9 @@ sub processFile {
 	
 	my $t0 = gettime();
 	
-	my $tInter = 0;
-	
 	for my $cell (@subs) {
 		# perform lower-casing, translation and re-casing
-		my $outText = translate($config, $cell->{'text'}, $translProxy, $recaseProxy);
+		my $outText = translate($config, $cell, $translProxy, $recaseProxy);
 		
 		displayResults($outFh, $cell, $outText);
 	}
@@ -133,7 +129,12 @@ sub communicate {
 		
 		my $rawResult = $proxy->call("translate", { 'text' => $encoded });
 		
-		return $rawResult->result->{'text'};
+		if (defined($rawResult->result) and defined($rawResult->result->{'text'})) {
+			return $rawResult->result->{'text'};
+		}
+		else {
+			die("Proxy returned empty result");
+		}
 	}
 }
 
@@ -458,7 +459,13 @@ sub reCase {
 	
 	my $rawTextMode = confBool($config->{'raw text mode'});
 	
-	return ($rawTextMode? $rawTranslation: finalizeRecasing(communicate($config, $proxy, $rawTranslation)));
+	if ($rawTextMode) {
+		return $rawTranslation;
+	}
+	else {
+		my $rawReCased = communicate($config, $proxy, $rawTranslation);
+		return finalizeRecasing($rawReCased);
+	}
 }
 
 #####
@@ -502,16 +509,35 @@ sub reportResults {
 #
 #####
 sub translate {
-	my ($config, $text, $translProxy, $recaseProxy) = @_;
+	my ($config, $cell, $translProxy, $recaseProxy) = @_;
+	
+	my $text = $cell->{'text'};
+	my $hashToStr = join(", ", map { $_ . ": `" . $cell->{$_} . "'" } sort keys %$cell);
 	
 	# lower-case
 	my $lcText = lowerCase($config, $text);
 	
+	my $rawOut = undef;
+	
 	# translate
-	my $rawOut = communicate($config, $translProxy, $lcText);
+	eval {
+		$rawOut = communicate($config, $translProxy, $lcText);
+	};
+	
+	if ($@ or !$rawOut) {
+		die("Failed to translate subtitle ($hashToStr), error message: $@");
+	}
 	
 	# re-case
-	my $recasedOut = reCase($config, $rawOut, $recaseProxy);
+	my $recasedOut = undef;
+	
+	eval {
+		$recasedOut = reCase($config, $rawOut, $recaseProxy);
+	};
+	
+	if ($@ or !$recasedOut) {
+		die("Failed to re-case subtitle ($hashToStr), translation: $rawOut, error message: $@");
+	}
 	
 	# return the re-cased translation
 	return $recasedOut;
@@ -564,9 +590,7 @@ sub readSubtitles {
 				$cell->{'timecode'} = "$idx\t$from\t$to";
 			}
 			elsif ($line =~ /^\s*$/) {
-				$cell->{'text'} =~ s/\s+/ /g;
-				$cell->{'text'} =~ s/^ //g;
-				$cell->{'text'} =~ s/ $//g;
+				$cell->{'text'} = postClean($cell->{'text'});
 				
 				push @result, $cell;
 				
@@ -578,9 +602,7 @@ sub readSubtitles {
 		}
 		
 		if ($cell->{'text'}) {
-			$cell->{'text'} =~ s/\s+/ /g;
-			$cell->{'text'} =~ s/^ //g;
-			$cell->{'text'} =~ s/ $//g;
+			$cell->{'text'} = postClean($cell->{'text'});
 			
 			push @result, $cell;
 		}
@@ -591,3 +613,19 @@ sub readSubtitles {
 	
 	return @result;
 }
+
+#####
+#
+#####
+sub postClean {
+	my ($text) = @_;
+	
+	$text =~ s/[\x00-\x09\x0b\x0c\x0e-\x1f\x7f\x{feff}]//g;
+	$text =~ s/\xa0\x9a/ /g;
+	$text =~ s/\s+/ /g;
+	$text =~ s/^ //g;
+	$text =~ s/ $//g;
+	
+	return $text;
+}
+
