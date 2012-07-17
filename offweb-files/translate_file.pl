@@ -610,9 +610,9 @@ sub readSubtitles {
 					#if ($result[$#result]->{'text'} =~ /^- / and $line =~ /^- /) {
 					#	$delim = $LINE_BREAK;
 					#}
-					else {
-						$delim = " ";
-					}
+					#else {
+					$delim = " ";
+					#}
 				}
 				
 				$result[$#result]->{'text'} .= $delim . postClean($line);
