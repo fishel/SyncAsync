@@ -9,6 +9,10 @@ use utf8;
 use FindBin qw($Bin);
 use Time::HiRes qw(gettimeofday);
 
+binmode(STDOUT, ':utf8');
+
+our $LINE_BREAK = " __ln_br__ ";
+
 print "starting translation\n";
 
 # load command-line arguments: language pair, job numeric ID, filename of the submitted file
@@ -130,7 +134,9 @@ sub communicate {
 		my $rawResult = $proxy->call("translate", { 'text' => $encoded });
 		
 		if (defined($rawResult->result) and defined($rawResult->result->{'text'})) {
-			return $rawResult->result->{'text'};
+			my $resultText = $rawResult->result->{'text'};
+			
+			return $resultText;
 		}
 		else {
 			die("Proxy returned empty result");
@@ -165,9 +171,9 @@ sub confLoad {
 	
 	my $result = {};
 	
-	open(FH, $configFilePath) or die ("Failed to open `$configFilePath' for reading");
+	my $fh = fopen($configFilePath);
 	
-	while (<FH>) {
+	while (<$fh>) {
 		s/[\n\r]//g;
 		
 		if (/^\s*$/ or /^\s*#/) {
@@ -180,7 +186,7 @@ sub confLoad {
 			#print STDERR "found $key -> $val!\n";
 			
 			unless ($val) {
-				$val = readMultilineValue(*FH);
+				$val = readMultilineValue($fh);
 				#print STDERR "val re-read: `$val'\n";
 			}
 			
@@ -191,7 +197,7 @@ sub confLoad {
 		}
 	}
 	
-	close(FH);
+	close($fh);
 	
 	return $result;
 }
@@ -327,7 +333,7 @@ sub performCallBack {
 			$curl->strerror($retcode) . "; " . $curl->errbuf . "\n");
 	}
 	
-	print "DEBUG: call-back server response:\n$response_body\n";
+	print "DEBUG: call-back server response:\n$response_body;\n";
 }
 
 #####
@@ -539,6 +545,11 @@ sub translate {
 		die("Failed to re-case subtitle ($hashToStr), translation: $rawOut, error message: $@");
 	}
 	
+	# replacing line break symbol with line break
+	$recasedOut =~ s/\Q$LINE_BREAK\E/\n/g;
+	
+	print "DEBUG: " . join("\n######\n", "", $text, $lcText, $rawOut, $recasedOut, "") . "----\n";
+	
 	# return the re-cased translation
 	return $recasedOut;
 }
@@ -571,40 +582,41 @@ sub readSubtitles {
 	my ($inFh) = @_;
 	
 	my @rawLines = map { s/[\n\r]//g; $_ } <$inFh>;
-	my @result;
+	my @result = ();
 	
 	my $hasTimeCodes = ($rawLines[0] =~ /^\d+(\s+\d{2}(\s*:\s*\d{2}){3}){2}$/);
 	
 	print "DEBUG has time codes: $hasTimeCodes;\n";
 	
 	if ($hasTimeCodes) {
-		my $cell = {};
-		
 		for my $line (@rawLines) {
+			
+			#time-code
 			if ($line =~ /^(\d+)\s+(\d{2}(?:\s*:\s*\d{2}){3})\s+(\d{2}(?:\s*:\s*\d{2}){3})$/) {
 				my ($idx, $from, $to) = ($1, $2, $3);
 				
 				$from =~ s/ //g;
 				$to =~ s/ //g;
 				
-				$cell->{'timecode'} = "$idx\t$from\t$to";
+				push @result, { 'timecode' => "$idx\t$from\t$to" };
 			}
-			elsif ($line =~ /^\s*$/) {
-				$cell->{'text'} = postClean($cell->{'text'});
-				
-				push @result, $cell;
-				
-				$cell = {};
-			}
-			else {
-				$cell->{'text'} .= " " . $line;
-			}
-		}
-		
-		if ($cell->{'text'}) {
-			$cell->{'text'} = postClean($cell->{'text'});
 			
-			push @result, $cell;
+			#empty line ends a subtitle, non-empty lines mean more text
+			elsif ($line !~ /^\s*$/) {
+				my $delim = "";
+				
+				if (defined($result[$#result]->{'text'})) {
+					# in case of direct-speach dialogues, keep the linebreak
+					#if ($result[$#result]->{'text'} =~ /^- / and $line =~ /^- /) {
+					#	$delim = $LINE_BREAK;
+					#}
+					else {
+						$delim = " ";
+					}
+				}
+				
+				$result[$#result]->{'text'} .= $delim . postClean($line);
+			}
 		}
 	}
 	else {

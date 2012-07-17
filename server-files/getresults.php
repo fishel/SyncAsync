@@ -25,16 +25,19 @@ if ($outcome == 1) {
 	$jobPath = "$workDir/$id";
 	
 	#get the subtitle lines -- TODO NB! have to test with UTF8
-	exec("cat $jobPath/output.txt", $subtitleLines);
+	exec("cat $jobPath/detok.txt", $subtitleLines);
 	
 	#display the subtitle file
 	print implode(($forHumans? "<br>": "\n"), $subtitleLines);
 	
 	#remove the job directory
-	exec("rm -r $jobPath");
+	#exec("rm -r $jobPath");
 	
 	#clean up the job DB entry
 	clearJobEntry($db, $id, $ERROR_CODE);
+}
+else {
+	print "someone has been here before me";
 }
 
 ?>
