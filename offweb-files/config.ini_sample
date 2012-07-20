@@ -46,3 +46,9 @@ detokenizer = /home/mfishel/offweb/scripts/detokenizer.perl
 # address of the call-back host; if not set, no call-back will be performed
 # and results will have to be retrieved via checkresults.php and getresults.php
 #call-back url = http://terra.cl.uzh.ch/trsrvdemo/call-back-test-tgt.php
+
+# line breaks in the input subtitles are substituted by
+# "_br_"; if this is set to true, the "_br_" tokens in the
+# output are replaced with a new-line character -- otherwise
+# they are deleted (no line breaks)
+#line-breaks = true

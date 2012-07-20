@@ -1,17 +1,18 @@
 #!/usr/bin/env perl
 use strict;
 use Encode;
-use XMLRPC::Lite;
 use DBI;
 use WWW::Curl::Form;
 use WWW::Curl::Easy;
 use utf8;
 use FindBin qw($Bin);
 use Time::HiRes qw(gettimeofday);
+use RPC::XML;
+use RPC::XML::Client;
 
 binmode(STDOUT, ':utf8');
 
-our $LINE_BREAK = " __ln_br__ ";
+our $LINE_BREAK = " _br_ ";
 
 print "starting translation\n";
 
@@ -121,7 +122,7 @@ sub displayResults {
 #
 #####
 sub communicate {
-	my ($config, $proxy, $text) = @_;
+	my ($config, $proxy, $inputText) = @_;
 	
 	my $rawTextMode = confBool($config->{'raw text mode'});
 	
@@ -129,17 +130,34 @@ sub communicate {
 		die("raw text mode communication not implemented yet");
 	}
 	else {
-		my $encoded = SOAP::Data->type(string => Encode::encode("utf8", $text));
+		$RPC::XML::ENCODING = "UTF-8";
 		
-		my $rawResult = $proxy->call("translate", { 'text' => $encoded });
+		my $encodedInputBytes = Encode::encode("utf8", $inputText);
 		
-		if (defined($rawResult->result) and defined($rawResult->result->{'text'})) {
-			my $resultText = $rawResult->result->{'text'};
-			
-			return $resultText;
+		my $encodedInput = RPC::XML::string->new($encodedInputBytes);
+		
+		my $request = RPC::XML::request->new(
+			'translate',
+			RPC::XML::struct->new({ 'text' => $encodedInput }));
+		
+		my $response = $proxy->send_request($request);
+		
+		if (!$response) {
+			die $RPC::XML::ERROR;
+		}
+		elsif (!defined($response->{text})) {
+			my $auxmsg = ${$response->{'faultString'}};;
+			die "Proxy returned empty result: $auxmsg";
+		}
+		elsif (!defined($response->{text}->value)) {
+			die "Proxy returned empty text";
 		}
 		else {
-			die("Proxy returned empty result");
+			my $result = $response->{text}->value;
+			
+			print "DEBUG: $result;\n";
+			
+			return $result;
 		}
 	}
 }
@@ -443,7 +461,7 @@ sub getProxy {
 	
 	my $list = confHash($config->{$listId});
 	
-	return XMLRPC::Lite->proxy($list->{$lp});
+	return RPC::XML::Client->new($list->{$lp});
 }
 
 #####
@@ -546,7 +564,8 @@ sub translate {
 	}
 	
 	# replacing line break symbol with line break
-	$recasedOut =~ s/\Q$LINE_BREAK\E/\n/g;
+	my $lineBreakReplacement = confBool($config->{"line-breaks"})? "\n": " ";
+	$recasedOut =~ s/\Q$LINE_BREAK\E/$lineBreakReplacement/g;
 	
 	print "DEBUG: " . join("\n######\n", "", $text, $lcText, $rawOut, $recasedOut, "") . "----\n";
 	
@@ -606,13 +625,7 @@ sub readSubtitles {
 				my $delim = "";
 				
 				if (defined($result[$#result]->{'text'})) {
-					# in case of direct-speach dialogues, keep the linebreak
-					#if ($result[$#result]->{'text'} =~ /^- / and $line =~ /^- /) {
-					#	$delim = $LINE_BREAK;
-					#}
-					#else {
-					$delim = " ";
-					#}
+					$delim = $LINE_BREAK;
 				}
 				
 				$result[$#result]->{'text'} .= $delim . postClean($line);
