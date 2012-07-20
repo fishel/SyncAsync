@@ -563,7 +563,7 @@ sub translate {
 	my $lineBreakReplacement = confBool($config->{"line-breaks"})? "\n": " ";
 	$recasedOut =~ s/\Q$LINE_BREAK\E/$lineBreakReplacement/g;
 	
-	print "DEBUG: " . join("\n######\n", "", $text, $lcText, $rawOut, $recasedOut, "") . "----\n";
+	#print "DEBUG: " . join("\n######\n", "", $text, $lcText, $rawOut, $recasedOut, "") . "----\n";
 	
 	# return the re-cased translation
 	return $recasedOut;

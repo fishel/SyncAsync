@@ -14,10 +14,6 @@
 	#support 2 kinds of output -- human-readable and machine-readable
 	$forHumans = isset($_GET['human']);
 	
-	if (!$forHumans) {
-		die("-1\nService in reconstruction");
-	}
-	
 	#####
 	# prepare a connection to the SQLite database for job ID management
 	#####
