@@ -153,11 +153,7 @@ sub communicate {
 			die "Proxy returned empty text";
 		}
 		else {
-			my $result = $response->{text}->value;
-			
-			print "DEBUG: $result;\n";
-			
-			return $result;
+			return $response->{text}->value;
 		}
 	}
 }
