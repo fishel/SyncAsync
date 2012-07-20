@@ -14,6 +14,8 @@ binmode(STDOUT, ':utf8');
 
 our $LINE_BREAK = " _br_ ";
 
+our $RECASER_LAST_LINE_ENDED_WITH_PUNCT = 1;
+
 print "starting translation\n";
 
 # load command-line arguments: language pair, job numeric ID, filename of the submitted file
@@ -166,12 +168,22 @@ sub finalizeRecasing {
 	
 	my @inWords = split(/ /, $rawRecOut);
 	my @outWords = ();
-	my $nextUp = 1;
+	my $nextUp = $RECASER_LAST_LINE_ENDED_WITH_PUNCT;
 	
+	# upper-case words after punctuation
 	for my $inWord (@inWords) {
 		push @outWords, ($nextUp? ucfirst($inWord): $inWord);
 		
 		$nextUp = ($inWord =~ /^[.?!]$/)
+	}
+	
+	$RECASER_LAST_LINE_ENDED_WITH_PUNCT = $inWords[$#inWords] =~ /[.?!]/;
+	
+	# upper-case words after dialogue dashes
+	for my $i (1..$#outWords) {
+		if ($outWords[$i - 1] eq "-" and ($i == 1 or $outWords[$i - 2] eq "_br_")) {
+			$outWords[$i] = ucfirst($outWords[$i]);
+		}
 	}
 	
 	return join(" ", @outWords);
