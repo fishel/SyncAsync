@@ -1,4 +1,4 @@
-<?
+<?php
 	# NB! set the path to your config file here:
 	$config = loadConfig("/home/mfishel/offweb/trsrvdemo/offweb-files/config.ini");
 	

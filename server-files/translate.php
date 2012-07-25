@@ -1,4 +1,4 @@
-<?
+<?php
 
 #get common constants and functions from here:
 include("trcommon.php");
@@ -167,7 +167,7 @@ function displayFileUploadForm() {
 		<td>
 			<select name="langpair">
 
-<?
+<?php
 	#just for demo purposes
 	$langPairs = array("de-en" => "German-English"); 
 	
@@ -190,6 +190,6 @@ function displayFileUploadForm() {
 </body>
 </html>
 
-<?
+<?php
 }
 ?>
