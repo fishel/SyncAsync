@@ -147,6 +147,9 @@ sub communicate {
 		if (!$response) {
 			die $RPC::XML::ERROR;
 		}
+		elsif (ref($response) ne "RPC::XML::struct") {
+			die "Proxy returned an error: $response;";
+		}
 		elsif (!defined($response->{text})) {
 			my $auxmsg = ${$response->{'faultString'}};;
 			die "Proxy returned empty result: $auxmsg";
@@ -335,12 +338,10 @@ sub performCallBack {
 	my $curlForm = WWW::Curl::Form->new;
 	$curlForm->formadd("requestID", "" . $jobId);
 	$curlForm->formadd("fileName", $origFilename);
+	$curlForm->formadd("error", $errorMessage);
 	
 	if (defined($resultPath)) {
 		$curlForm->formaddfile($resultPath, "file", "multipart/form-data");
-	}
-	else {
-		$curlForm->formadd("error", $errorMessage);
 	}
 
 	$curl->setopt(CURLOPT_HTTPPOST, $curlForm);
