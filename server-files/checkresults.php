@@ -1,4 +1,4 @@
-<?
+<?php
 
 #get common constants and functions from here:
 include("trcommon.php");
