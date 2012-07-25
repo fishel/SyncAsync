@@ -115,9 +115,9 @@ sub displayResults {
 	my $timeCodedOutput = (defined($cell->{'timecode'}));
 	
 	print $outFh 
-		($timeCodedOutput? $cell->{'timecode'} . "\n": "") .
-		$translation . "\n" .
-		($timeCodedOutput? "\n": "");
+		($timeCodedOutput? $cell->{'timecode'} . "\r\n": "") .
+		$translation . "\r\n" .
+		($timeCodedOutput? "\r\n": "");
 }
 
 #####
