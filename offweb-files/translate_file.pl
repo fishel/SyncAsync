@@ -135,24 +135,28 @@ sub displayResults {
 sub smartmate_translate {
 	my ($config, $inputText, $langPair, $ua) = @_;
 	
-	unless (defined($conf->{'engine list'})) {
+	if ($inputText =~ /^\s*$/) {
+		return $inputText;
+	}
+	
+	unless (defined($config->{'engine list'})) {
 		die("SmartMATE engineOID list not found in config file");
 	}
 	
-	my $enginesList = confHash($conf->{'engine list'});
+	my $enginesList = confHash($config->{'engine list'});
 	
 	unless (defined($enginesList->{$langPair})) {
 		die("SmartMATE engineOID for `$langPair' not found in config file");
 	}
 	
-	my $url = $config->{"smartmate base url"};
-	
-	unless (defined($config->{"smartmate base url"})) {
+	unless (defined($config->{"smartmate_base_url"})) {
 		die("SmartMATE base API URL not found in config file");
 	}
 	
+	my $url = $config->{"smartmate_base_url"};
+	
 	$url .= "&engineOID=".$enginesList->{$langPair};
-	$url .= "q=";
+	$url .= "&q=";
 
 	$inputText =~ s/[\r\n]//g;
 
@@ -623,7 +627,7 @@ sub translate {
 		$rawOut = communicate($config, $translProxy, $lcText, $langPair, $ua);
 	};
 	
-	if ($@ or !$rawOut) {
+	if ($@ or (!$rawOut and $lcText !~ /^\s*$/ ) ) {
 		die("Failed to translate subtitle ($hashToStr), error message: $@");
 	}
 	
@@ -634,7 +638,7 @@ sub translate {
 		$recasedOut = reCase($config, $rawOut, $recaseProxy);
 	};
 	
-	if ($@ or !$recasedOut) {
+	if ($@ or (!$recasedOut and $rawOut !~ /^\s*$/) ) {
 		die("Failed to re-case subtitle ($hashToStr), translation: $rawOut, error message: $@");
 	}
 	
