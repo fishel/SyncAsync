@@ -1,14 +1,14 @@
 SyncAsync
 ==========
 
-A PHP, Perl and SQLite implementation of a translation server front-end, for synchronous sentence-based and asynchronous file-based communication.
+A PHP, Perl and SQLite implementation of a translation server front-end, for synchronous sentence-based and asynchronous file-based communication. Uses Moses server for translation and re-casing.
 
 The communication protocol that this package implements is:
 
 1. communication is done via a POST request to translate.php. The parameters of this POST request include
-    + *langpair:* language pair to translate from and into (string)
-    + either *sentence:* for synchronous sentence-based communication, sentence to translate (UTF8 string)
-    + or *file:* for asynchronous file-based communication, file to translate (file parameter) -- requires multipart form encoding
+    - *langpair:* language pair to translate from and into (string)
+    - either *sentence:* for synchronous sentence-based communication, sentence to translate (UTF8 string)
+    - or *file:* for asynchronous file-based communication, file to translate (file parameter) -- requires multipart form encoding
 
 2. the output of translate.php depends on the translation mode:
     + for synchronous requests, the output is the status code, new line character, translation output; the status code is 0 for successful jobs

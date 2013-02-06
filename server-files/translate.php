@@ -8,18 +8,46 @@ $ERROR_CODE = "-1";
 
 #backup functionality: if there's no POST request, show a simple HTML form for submitting files;
 #works only for the human-readable version
-if ($_POST and $_FILES) {
-	startNewTranslationSession();
+if ($_POST) {
+	processTranslationRequest();
 }
 else {
 	displayFileUploadForm();
 }
 
 #####
-# function to process the POST request -- starts the translation job
+#
+#####
+function processTranslationRequest() {
+	global $forHumans, $ERROR_CODE;
+	if (isset($_POST['sentence'])) {
+		doSyncTranslation();
+	}
+	else if ($_FILES and count($_FILES) > 0) {
+		startNewTranslationAsyncSession();
+	}
+	else if ($forHumans) {
+		print "<p>Error handling request: neither sentence parameter nor file parameter given</p>";
+	}
+	else {
+		print $ERROR_CODE;
+	}
+}
+
+#####
+# function to process the POST request in synchronous translation mode -- translates the sentence
+# and prints it together with the output status
+#####
+function doSyncTranslation() {
+	global $forHumans, $ERROR_CODE;
+	
+}
+
+#####
+# function to process the POST request in asynchronous translation mode -- starts the translation job
 # and registers a new ID in the database; prints the final response
 #####
-function startNewTranslationSession() {
+function startNewTranslationAsyncSession() {
 	global $forHumans, $ERROR_CODE;
 	
 	#create a DB connection
@@ -150,11 +178,50 @@ function displayFileUploadForm() {
 
 <html>
 <head>
-<title>Translation server prototype</title>
+<title>Translation server</title>
 </head>
 <body>
 
-<form method="post" enctype="multipart/form-data">
+<?
+	#just for demo purposes
+	$langPairs = array("de-en" => "German-English"); 
+?>	
+
+<h3>Synchronous translation (sentence):</h3>
+<form method="post" name="syncForm">
+<table border="0">
+	<tr>
+		<th align="left">Sentence to translate: </th>
+		<td>
+			<input type="text" name="sentence"/>
+		</td>
+	</tr>
+	<tr>
+		<th align="left">Lang. pair:</th>
+		<td>
+			<select name="langpair">
+
+<?
+	foreach ($langPairs as $short => $full) {
+		print "\t\t\t<option value=\"$short\">$full</option>\n";
+	}
+?>
+
+			</select>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<input type="submit"/>
+		</td>
+	</tr>
+</table>
+</form>
+
+<hr/>
+
+<h3>Asynchronous translation (file):</h3>
+<form method="post" enctype="multipart/form-data" name="AsyncForm">
 <table border="0">
 	<tr>
 		<th align="left">File to translate: </th>
@@ -168,9 +235,6 @@ function displayFileUploadForm() {
 			<select name="langpair">
 
 <?
-	#just for demo purposes
-	$langPairs = array("de-en" => "German-English"); 
-	
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
 	}
