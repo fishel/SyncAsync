@@ -1,7 +1,7 @@
 SyncAsync
 ==========
 
-A PHP, Perl and SQLite implementation of a translation server front-end, for synchronous sentence-based and asynchronous file-based communication. Uses Moses server for translation and re-casing.
+Translation server front-end to Moses, for synchronous sentence-based and asynchronous file-based communication.
 
 The communication protocol that this package implements is:
 
