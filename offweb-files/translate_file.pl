@@ -82,7 +82,9 @@ sub processFile {
 	doDeTokenization($config, $tmpFilenames, $langPair);
 
 	# report results by either performing a call-back (if the host is configured) or by updating the job the status
-	reportResults($config, $jobId, $tmpFilenames, $origFilename);
+	if ($origFilename) {
+		reportResults($config, $jobId, $tmpFilenames, $origFilename);
+	}
 }
 
 #####

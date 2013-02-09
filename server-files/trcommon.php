@@ -1,6 +1,6 @@
 <?
 	# NB! set the path to your config file here:
-	$config = loadConfig("/home/mfishel/offweb/trsrvdemo/offweb-files/config.ini");
+	$config = loadConfig("/home/mfishel/offweb/SyncAsync/offweb-files/config.ini");
 	
 	#path to the SQLite DB file
 	$dbPath = $config["db path"];
@@ -99,7 +99,7 @@
 			fclose($fh);
 		}
 		else {
-			die("Failed to open the config file");
+			die("Failed to open the config file ($configFilePath)");
 		}
 		
 		return $result;

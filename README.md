@@ -1,7 +1,9 @@
 SyncAsync
 ==========
 
-Translation server front-end to Moses, for synchronous sentence-based and asynchronous file-based communication.
+Translation server front-end to Moses server, for synchronous sentence-based and asynchronous file-based communication. For both communication
+modes it does tokenization, lower-casing, translation, re-casing and de-tokenization. The server side scripts are written in PHP, offline scripts
+are in Perl; both scripts use an SQLite database.
 
 The communication protocol that this package implements is:
 
@@ -34,3 +36,9 @@ INSTALLATION:
   for the configuration fields for your server, specifying the location of this package for the
   translate\_file.pl script, the database, etc.
 - set the path to config.ini in the beginning of your server-files/trcommon.php
+
+LIBRARY DEPENDENCIES:
+- CPAN libraries used from the Perl scripts, in addition to the more standard ones
+    + WWW::Curl::Form, WWW::Curl::Easy
+    + RPC::XML, RPC::XML::Client
+    + DBI, DBD::SQLite
