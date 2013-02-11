@@ -5,6 +5,8 @@ Translation server front-end to Moses server, for synchronous sentence-based and
 modes it does tokenization, lower-casing, translation, re-casing and de-tokenization. The server side scripts are written in PHP, offline scripts
 are in Perl; both script sets use an SQLite database.
 
+The front-end is mostly meant for automatic usage by a real client-side front-end; a demo web frontend is included, which can be used to serve translations online.
+
 Communication Protocol
 ----------------------
 
