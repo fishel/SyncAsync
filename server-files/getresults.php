@@ -25,7 +25,7 @@ if ($outcome == 1) {
 	$jobPath = "$workDir/$id";
 	
 	#get the subtitle lines -- TODO NB! have to test with UTF8
-	exec("cat $jobPath/detok.txt", $subtitleLines);
+	exec("cat $jobPath/output.txt", $subtitleLines);
 	
 	#display the subtitle file
 	print implode(($forHumans? "<br>": "\n"), $subtitleLines);

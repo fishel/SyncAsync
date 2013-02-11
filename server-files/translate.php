@@ -85,7 +85,7 @@ function saveText($text, $jobId) {
 #####
 function reportSyncResults($jobId) {
 	global $workDir, $ERROR_CODE, $forHumans;
-	$path = "$workDir/$jobId/detok.txt";
+	$path = "$workDir/$jobId/output.txt";
 	$translation = file_get_contents($path);
 	if ($translation === FALSE) {
 		if ($forHumans) {
@@ -222,6 +222,10 @@ function displayDemoTranslationForm() {
 <html>
 <head>
 <title>Translation server</title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<meta http-equiv="cache-control" content="no-cache"/>
+<meta http-equiv="pragma" content="no-cache"/>
+<meta http-equiv="expires" content="0"/>
 </head>
 <body>
 
