@@ -99,7 +99,7 @@
 			fclose($fh);
 		}
 		else {
-			die("Failed to open the config file");
+			die("Failed to open the config file ($configFilePath)");
 		}
 		
 		return $result;

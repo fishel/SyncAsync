@@ -48,7 +48,7 @@ sub processFile {
 
 	# initialize filenames for intermediate files
 	my $tmpFilenames = initTmpFilenames($config, $jobId);
-
+	
 	# tokenize input using the configurated external script
 	doTokenization($config, $tmpFilenames, $langPair);
 
@@ -90,9 +90,14 @@ sub processFile {
 
 	# de-tokenize output using the configurated external script
 	doDeTokenization($config, $tmpFilenames, $langPair);
+	
+	# convert to dos or unix into "output.txt" as a final step
+	finalizeLineEndings($config, $tmpFilenames);
 
 	# report results by either performing a call-back (if the host is configured) or by updating the job the status
-	reportResults($config, $jobId, $tmpFilenames, $origFilename);
+	if ($origFilename) {
+		reportResults($config, $jobId, $tmpFilenames, $origFilename);
+	}
 }
 
 #####
@@ -125,9 +130,9 @@ sub displayResults {
 	my $timeCodedOutput = (defined($cell->{'timecode'}));
 	
 	print $outFh 
-		($timeCodedOutput? $cell->{'timecode'} . "\r\n": "") .
-		$translation . "\r\n" .
-		($timeCodedOutput? "\r\n": "");
+		($timeCodedOutput? $cell->{'timecode'} . "\n": "") .
+		$translation . "\n" .
+		($timeCodedOutput? "\n": "");
 }
 
 #####
@@ -470,11 +475,12 @@ sub initTmpFilenames {
 	# tok = tokenized input file
 	# rawtrans = translated, re-cased file
 	# detok = de-tokenized file
+	# output = final output file
 	
 	# toklog = log file of the tokenizer
 	# detoklog = log file of the de-tokenizer
 	
-	return {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok rawtrans detok toklog detoklog)};
+	return {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok rawtrans detok output toklog detoklog)};
 }
 
 #####
@@ -493,11 +499,16 @@ sub doTokenization {
 		my ($srcLang) = split(/-/, $langPair);
 		
 		my $tokScript = $config->{'tokenizer'};
+		my $toUnixScript = $Bin . "/tounix.pl";
 		
-		system("$tokScript -l $srcLang" .
-			" <" . $tmpNames->{'input'} .
-			" >" . $tmpNames->{'tok'} .
-			" 2>" . $tmpNames->{'toklog'});
+		#convert (just in case) from CRLF to LF and then tokenize
+		system(sprintf("%s < %s | %s -l %s > %s 2> %s",
+			$toUnixScript,
+			$tmpNames->{'input'},
+			$tokScript,
+			$srcLang,
+			$tmpNames->{'tok'},
+			$tmpNames->{'toklog'}));
 		
 		unless ($? == 0) {
 			die("Failed to tokenize file ($!)");
@@ -525,11 +536,14 @@ sub doDeTokenization {
 		my ($srcLang, $tgtLang) = split(/-/, $langPair);
 		
 		my $detokScript = $config->{'detokenizer'};
+		my $toUnixScript = $Bin . "/tounix.pl";
 		
-		system("$detokScript -l $tgtLang" .
-			" <" . $tmpNames->{'rawtrans'} .
-			" >" . $tmpNames->{'detok'} .
-			" 2>" . $tmpNames->{'detoklog'} );
+		system(sprintf("%s -l %s < %s > %s 2> %s",
+			$detokScript,
+			$tgtLang,
+			$tmpNames->{'rawtrans'},
+			$tmpNames->{'detok'},
+			$tmpNames->{'detoklog'}));
 		
 		unless ($? == 0) {
 			die("Failed to de-tokenize file ($!)");
@@ -539,6 +553,21 @@ sub doDeTokenization {
 	unless (-e $tmpNames->{'detok'}) {
 		die("De-tokenized output file was not generated");
 	}
+}
+
+#####
+#
+#####
+sub finalizeLineEndings {
+	my ($config, $tmpFilenames) = @_;
+	
+	my $finScript = $Bin . "/" . (confBool($config->{'crlf line endings'})? "todos": "tounix") . ".pl";
+	
+	my $cmd = sprintf("%s < %s > %s", $finScript, $tmpFilenames->{'detok'}, $tmpFilenames->{'output'});
+	
+	print "LOG: $cmd;\n";
+	
+	system($cmd);
 }
 
 #####
@@ -605,7 +634,7 @@ sub reportResults {
 	
 	# if the call-back URL is defined, perform call-back
 	if (defined($config->{'call-back url'})) {
-		performCallBack($jobId, $origFilename, $tmpNames->{'detok'});
+		performCallBack($jobId, $origFilename, $tmpNames->{'output'});
 		
 		#delete the directory and update the status
 		cleanup($dbh, $jobId, $jobPath);

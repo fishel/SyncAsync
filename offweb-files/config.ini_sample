@@ -47,6 +47,11 @@ detokenizer = /home/mfishel/offweb/scripts/detokenizer.perl
 # and results will have to be retrieved via checkresults.php and getresults.php
 #call-back url = http://terra.cl.uzh.ch/trsrvdemo/call-back-test-tgt.php
 
+# if set to "true", the resulting text files will have CR+LF line endings,
+# instead of the UNIX default LF; in other words, set to "true" if the
+# target systems use Windows
+crlf line endings = true
+
 # line breaks in the input subtitles are substituted by
 # "_br_"; if this is set to true, the "_br_" tokens in the
 # output are replaced with a new-line character -- otherwise
