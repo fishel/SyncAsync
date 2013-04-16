@@ -12,6 +12,7 @@ use RPC::XML::Client;
 
 use URI::Escape;
 use JSON;
+use Data::Dumper;
 
 binmode(STDOUT, ':utf8');
 
@@ -167,6 +168,8 @@ sub smartmate_translate {
 	my $result;
 	while (!$done) {
 		$result = $ua->get($url.$encoded) or die;
+#		print Dumper($result);
+		print $result->code()."\n";
 		my $json = $result->content;
 		$json =~ s/^\s+//;
 		$json =~ s/\s+$//;
@@ -410,7 +413,9 @@ sub performCallBack {
 	$curlForm->formadd("fileName", $origFilename);
 	$curlForm->formadd("error", $errorMessage);
 	
+	print $resultPath."\n";
 	if (defined($resultPath)) {
+		print "adding file\n";
 		$curlForm->formaddfile($resultPath, "file", "multipart/form-data");
 	}
 
@@ -418,6 +423,10 @@ sub performCallBack {
 
 	$curl->setopt(CURLOPT_HEADER, 1);
 	$curl->setopt(CURLOPT_URL, $config->{'call-back url'});
+#	$curl->setopt(CURLOPT_URL, $config->{'smartmate_test'});
+#	$curl->setopt(CURLOPT_SSL_VERIFYHOST, 0);
+#	$curl->setopt(CURLOPT_SSL_VERIFYPEER, 0); 
+	
 
 	my $response_body;
 	$curl->setopt(CURLOPT_WRITEDATA, \$response_body);

@@ -169,7 +169,10 @@ function displayFileUploadForm() {
 
 <?php
 	#just for demo purposes
-	$langPairs = array("de-en" => "German-English"); 
+	$langPairs = array("nl-en" => "Dutch-English",
+			   "en-nl" => "English-Dutch",
+			   "de-en" => "German-English",
+                           "en-de" => "English-German"); 
 	
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";

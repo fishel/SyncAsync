@@ -33,7 +33,8 @@ if ($forHumans) {
 		$jobPath = "$workDir/$id";
 		
 		exec("cat $jobPath/input.txt | wc -l", $totalRaw);
-		exec("cat $jobPath/output.txt | wc -l", $readyRaw);
+		#exec("cat $jobPath/output.txt | wc -l", $readyRaw);
+		exec("cat $jobPath/rawtrans.txt | wc -l", $readyRaw);
 		
 		$total = 0 + $totalRaw[0];
 		$ready = 0 + $readyRaw[0];
