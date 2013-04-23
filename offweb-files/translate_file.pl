@@ -10,6 +10,10 @@ use Time::HiRes qw(gettimeofday);
 use RPC::XML;
 use RPC::XML::Client;
 
+use URI::Escape;
+use JSON;
+use Data::Dumper;
+
 binmode(STDOUT, ':utf8');
 
 our $LINE_BREAK = " _br_ ";
@@ -57,6 +61,12 @@ sub processFile {
 	# prepare proxies for translation and re-casing
 	my $translProxy = getProxy($config, 'translation host list', $langPair);
 	
+	# create a user agent to be able to handle https, but only if using SmartMATE
+	my $ua = 0;
+	if (defined($config->{"smartmate_translate"}) and $config->{'smartmate_translate'}) {
+		$ua = LWP::UserAgent->new();
+	}
+	
 	my ($srcLang, $tgtLang) = split(/-/, $langPair);
 	my $recaseProxy = getProxy($config, 'recasing host list', $tgtLang);
 
@@ -70,7 +80,7 @@ sub processFile {
 	
 	for my $cell (@subs) {
 		# perform lower-casing, translation and re-casing
-		my $outText = translate($config, $cell, $translProxy, $recaseProxy);
+		my $outText = translate($config, $cell, $translProxy, $recaseProxy, $langPair, $ua);
 		
 		displayResults($outFh, $cell, $outText);
 	}
@@ -132,13 +142,76 @@ sub displayResults {
 #####
 #
 #####
+sub smartmate_translate {
+	my ($config, $inputText, $langPair, $ua) = @_;
+	
+	if ($inputText =~ /^\s*$/) {
+		return $inputText;
+	}
+	
+	unless (defined($config->{'engine list'})) {
+		die("SmartMATE engineOID list not found in config file");
+	}
+	
+	my $enginesList = confHash($config->{'engine list'});
+	
+	unless (defined($enginesList->{$langPair})) {
+		die("SmartMATE engineOID for `$langPair' not found in config file");
+	}
+	
+	unless (defined($config->{"smartmate_base_url"})) {
+		die("SmartMATE base API URL not found in config file");
+	}
+	
+	my $url = $config->{"smartmate_base_url"};
+	
+	$url .= "&engineOID=".$enginesList->{$langPair};
+	$url .= "&q=";
+
+	$inputText =~ s/[\r\n]//g;
+
+	my $encoded = uri_escape(Encode::encode("utf8", $inputText));
+
+	print "translating\n";
+	my $done = 0;
+	my $result;
+	while (!$done) {
+		$result = $ua->get($url.$encoded) or die;
+#		print Dumper($result);
+		print $result->code()."\n";
+		my $json = $result->content;
+		$json =~ s/^\s+//;
+		$json =~ s/\s+$//;
+		print $json."\n";
+		$json = decode_json($json);
+		if ($json->{'success'}) {
+			$result=$json->{'translation'};
+			$done = 1;
+		} else {
+			sleep(10);
+		}
+	}
+
+	#chomp $result;
+
+	return $result;
+
+}
+
+#####
+#
+#####
 sub communicate {
-	my ($config, $proxy, $inputText) = @_;
+	my ($config, $proxy, $inputText, $langPair, $ua) = @_;
 	
 	my $rawTextMode = confBool($config->{'raw text mode'});
 	
 	if ($rawTextMode) {
-		die("raw text mode communication not implemented yet");
+		if (defined($config->{"smartmate_translate"}) and  $config->{"smartmate_translate"}) {
+			return smartmate_translate($config, $inputText, $langPair, $ua);
+		} else {
+			die("raw text mode communication not implemented yet");
+		}
 	}
 	else {
 		$RPC::XML::ENCODING = "UTF-8";
@@ -349,7 +422,9 @@ sub performCallBack {
 	$curlForm->formadd("fileName", $origFilename);
 	$curlForm->formadd("error", $errorMessage);
 	
+	print $resultPath."\n";
 	if (defined($resultPath)) {
+		print "adding file\n";
 		$curlForm->formaddfile($resultPath, "file", "multipart/form-data");
 	}
 
@@ -357,6 +432,10 @@ sub performCallBack {
 
 	$curl->setopt(CURLOPT_HEADER, 1);
 	$curl->setopt(CURLOPT_URL, $config->{'call-back url'});
+#	$curl->setopt(CURLOPT_URL, $config->{'smartmate_test'});
+#	$curl->setopt(CURLOPT_SSL_VERIFYHOST, 0);
+#	$curl->setopt(CURLOPT_SSL_VERIFYPEER, 0); 
+	
 
 	my $response_body;
 	$curl->setopt(CURLOPT_WRITEDATA, \$response_body);
@@ -575,7 +654,7 @@ sub reportResults {
 #
 #####
 sub translate {
-	my ($config, $cell, $translProxy, $recaseProxy) = @_;
+	my ($config, $cell, $translProxy, $recaseProxy, $langPair, $ua) = @_;
 	
 	my $text = $cell->{'text'};
 	my $hashToStr = join(", ", map { $_ . ": `" . $cell->{$_} . "'" } sort keys %$cell);
@@ -587,10 +666,10 @@ sub translate {
 	
 	# translate
 	eval {
-		$rawOut = communicate($config, $translProxy, $lcText);
+		$rawOut = communicate($config, $translProxy, $lcText, $langPair, $ua);
 	};
 	
-	if ($@ or !$rawOut) {
+	if ($@ or (!$rawOut and $lcText !~ /^\s*$/ ) ) {
 		die("Failed to translate subtitle ($hashToStr), error message: $@");
 	}
 	
@@ -601,7 +680,7 @@ sub translate {
 		$recasedOut = reCase($config, $rawOut, $recaseProxy);
 	};
 	
-	if ($@ or !$recasedOut) {
+	if ($@ or (!$recasedOut and $rawOut !~ /^\s*$/) ) {
 		die("Failed to re-case subtitle ($hashToStr), translation: $rawOut, error message: $@");
 	}
 	

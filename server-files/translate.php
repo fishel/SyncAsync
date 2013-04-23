@@ -1,4 +1,4 @@
-<?
+<?php
 
 #get common constants and functions from here:
 include("trcommon.php");
@@ -292,7 +292,13 @@ function displayDemoTranslationForm() {
 		<td>
 			<select name="langpair">
 
-<?
+<?php
+	#just for demo purposes
+	$langPairs = array("nl-en" => "Dutch-English",
+			   "en-nl" => "English-Dutch",
+			   "de-en" => "German-English",
+                           "en-de" => "English-German"); 
+	
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
 	}
@@ -312,6 +318,6 @@ function displayDemoTranslationForm() {
 </body>
 </html>
 
-<?
+<?php
 }
 ?>

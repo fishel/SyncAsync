@@ -1,4 +1,4 @@
-<?
+<?php
 
 #get common constants and functions from here:
 include("trcommon.php");
@@ -34,7 +34,7 @@ if ($outcome == 1) {
 	#exec("rm -r $jobPath");
 	
 	#clean up the job DB entry
-	clearJobEntry($db, $id, $ERROR_CODE);
+	#clearJobEntry($db, $id, $ERROR_CODE);
 }
 else {
 	print "someone has been here before me";
