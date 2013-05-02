@@ -131,4 +131,21 @@
 	function normalize($str) {
 		return preg_replace('/\s+/', ' ', trim($str));
 	}
+	
+	#####
+	#
+	#####
+	function confHash($configStr) {
+		$lines = explode("\n", $configStr);
+		$result = array();
+		
+		foreach ($lines as $line) {
+			if (strlen(trim($line)) > 0) {
+				$fields = explode(" ", $line);
+				$result[$fields[0]] = $fields[1];
+			}
+		}
+		
+		return $result;
+	}
 ?>
