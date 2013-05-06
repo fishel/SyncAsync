@@ -170,7 +170,7 @@ function checkMosesServerUp($rawhost) {
 
 	$fp = fsockopen($host, -1, $errno, $errstr);
 	if ($fp) {
-		$query = "POST /RPC2 HTTP/1.0\nUser_Agent: My Client\nHost: ".$host."\nContent-Type: text/xml\nContent-Length: ".strlen($request)."\n\n".$request."\n";
+		$query = "POST /RPC2 HTTP/1.0\nUser_Agent: My Client\nHost: ".$host."\nContent-Type: text/xml\nContent-Length: 3\n\nXXX\n";
 
 		if (!fputs($fp, $query, strlen($query))) {
 			die("Translation/recasing server is down");
@@ -345,8 +345,7 @@ function displayDemoTranslationForm() {
 	$langPairs = array("nl-en" => "Dutch-English",
 				"en-nl" => "English-Dutch",
 				"de-en" => "German-English",
-				"en-de" => "English-German"); 
-
+				"en-de" => "English-German");
 	
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
