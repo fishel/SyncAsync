@@ -294,7 +294,8 @@ function displayDemoTranslationForm() {
 
 <?php
 	#just for demo purposes
-	$langPairs = array("nl-en" => "Dutch-English",
+	$langPairs = array("en-de-prof" => "English-German PROF",
+			   "nl-en" => "Dutch-English",
 			   "en-nl" => "English-Dutch",
 			   "de-en" => "German-English",
                            "en-de" => "English-German"); 
