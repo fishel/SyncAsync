@@ -165,8 +165,56 @@ function moveAsyncFile($fileInfo, $jobId) {
 #####
 #
 #####
+function checkMosesServerUp($rawhost) {
+	$host = str_replace(array("http://", "https://", "/RPC2"), array("", "", ""), $rawhost);
+
+	$fp = fsockopen($host, -1, $errno, $errstr);
+	if ($fp) {
+		$query = "POST /RPC2 HTTP/1.0\nUser_Agent: My Client\nHost: ".$host."\nContent-Type: text/xml\nContent-Length: 3\n\nXXX\n";
+
+		if (!fputs($fp, $query, strlen($query))) {
+			die("Translation/recasing server is down");
+		}
+
+		$contents = '';
+		while (!feof($fp)) {
+			$contents .= fgets($fp);
+		}
+
+		fclose($fp);
+		
+		if (!$contents) {
+			die("Translation/recasing server is down");
+		}
+	}
+	else {
+		die("Translation/recasing server is down");
+	}
+}
+
+#####
+#
+#####
+function checkIfServersUp($langPair) {
+	global $config;
+	
+	$langs = explode("-", $langPair);
+	$tgtLang = $langs[1];
+	
+	$trHostHash = confHash($config['translation host list']);
+	$rcHostHash = confHash($config['recasing host list']);
+	
+	checkMosesServerUp($trHostHash[$langPair]);
+	checkMosesServerUp($rcHostHash[$tgtLang]);
+}
+
+#####
+#
+#####
 function startTranslation($langPair, $jobId, $origFileName, $syncMode) {
 	global $workDir, $trScript, $forHumans, $ERROR_CODE;
+	
+	checkIfServersUp($langPair);
 	
 	$cmd = sprintf("perl %s > %s 2>&1",
 		"$trScript \"$langPair\" \"$jobId\"" . ($syncMode? "": " \"$origFileName\""),

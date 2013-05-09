@@ -1,6 +1,7 @@
 <?php
 	# NB! set the path to your config file here:
-	$config = loadConfig("/var/www/AsyncTrSrv/offweb-files/config.ini");
+	#$config = loadConfig("/home/mfishel/offweb/SyncAsync/offweb-files/config.ini");
+	die("please update trcommon.php with your personal path to the config.ini file");
 	
 	#path to the SQLite DB file
 	$dbPath = $config["db path"];
@@ -129,5 +130,22 @@
 	#####
 	function normalize($str) {
 		return preg_replace('/\s+/', ' ', trim($str));
+	}
+	
+	#####
+	#
+	#####
+	function confHash($configStr) {
+		$lines = explode("\n", $configStr);
+		$result = array();
+		
+		foreach ($lines as $line) {
+			if (strlen(trim($line)) > 0) {
+				$fields = explode(" ", $line);
+				$result[$fields[0]] = $fields[1];
+			}
+		}
+		
+		return $result;
 	}
 ?>

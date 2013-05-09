@@ -28,6 +28,10 @@ my ($langPair, $jobId, $origFilename) = @ARGV;
 # load configuration
 my $config = confLoad($Bin . "/config.ini");
 
+unless (confBool($config->{"line-breaks"})) {
+	$LINE_BREAK = " ";
+}
+
 # exception handling: in case of exceptions update status to error and/or perform an error call-back
 eval {
 	# main file processing (tokenization, translation, reporting, etc.) is done here
@@ -631,12 +635,12 @@ sub reportResults {
 	
 	my $jobPath = $config->{'work dir'} . "/" . $jobId;
 	
-	# initialize a DB connection
-	my $dbh = connectDb($config);
-	
 	# if the call-back URL is defined, perform call-back
 	if (defined($config->{'call-back url'})) {
 		performCallBack($jobId, $origFilename, $tmpNames->{'output'});
+		
+		# initialize a DB connection
+		my $dbh = connectDb($config);
 		
 		#delete the directory and update the status
 		cleanup($dbh, $jobId, $jobPath);
@@ -644,6 +648,9 @@ sub reportResults {
 	
 	# otherwise, save status for retrieval via getresults.php
 	else {
+		# initialize a DB connection
+		my $dbh = connectDb($config);
+		
 		saveStatus($dbh, $jobId);
 	}
 }
