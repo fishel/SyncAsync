@@ -48,7 +48,9 @@ sub processFile {
 	my ($langPair, $jobId, $origFilename, $config) = @_;
 
 	# check if the language pair is set up in the configuration
-	checkLangPair($config, $langPair);
+	if (! defined($config->{"smartmate_translate"})) {
+	    checkLangPair($config, $langPair);
+	}
 
 	# initialize filenames for intermediate files
 	my $tmpFilenames = initTmpFilenames($config, $jobId);

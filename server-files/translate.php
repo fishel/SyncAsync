@@ -212,9 +212,11 @@ function checkIfServersUp($langPair) {
 #
 #####
 function startTranslation($langPair, $jobId, $origFileName, $syncMode) {
-	global $workDir, $trScript, $forHumans, $ERROR_CODE;
+  global $workDir, $trScript, $forHumans, $ERROR_CODE, $config;
 	
-	checkIfServersUp($langPair);
+        if (! $config['smartmate_translate']) {
+	    checkIfServersUp($langPair);
+	}
 	
 	$cmd = sprintf("perl %s > %s 2>&1",
 		"$trScript \"$langPair\" \"$jobId\"" . ($syncMode? "": " \"$origFileName\""),
@@ -277,7 +279,7 @@ function displayDemoTranslationForm() {
 </head>
 <body>
 
-<?
+<?php
 	#just for demo purposes
 	#$langPairs = array(
 	#	"de-en" => "German-English",
@@ -307,7 +309,12 @@ function displayDemoTranslationForm() {
 		<td>
 			<select name="langpair">
 
-<?
+<?php
+	$langPairs = array("en-de-prof" => "English-German PROF",
+			   "nl-en" => "Dutch-English",
+			   "en-nl" => "English-Dutch",
+			   "de-en" => "German-English",
+                           "en-de" => "English-German"); 
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
 	}
@@ -342,10 +349,11 @@ function displayDemoTranslationForm() {
 
 <?php
 	#just for demo purposes
-	$langPairs = array("nl-en" => "Dutch-English",
-				"en-nl" => "English-Dutch",
-				"de-en" => "German-English",
-				"en-de" => "English-German");
+	$langPairs = array("en-de-prof" => "English-German PROF",
+			   "nl-en" => "Dutch-English",
+			   "en-nl" => "English-Dutch",
+			   "de-en" => "German-English",
+                           "en-de" => "English-German"); 
 	
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
