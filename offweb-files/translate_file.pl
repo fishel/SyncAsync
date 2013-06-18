@@ -693,6 +693,10 @@ sub translate {
 	
 	#print "DEBUG: " . join("\n######\n", "", $text, $lcText, $rawOut, $recasedOut, "") . "----\n";
 	
+	if (scalar(@{$cell->{'lines'}}) == 2 and $cell->{'lines'}->[0] =~ /^-/ and $cell->{'lines'}->[1] =~ /^-/ and $recasedOut =~ /^(- .*)(- .*)$/) {
+		$recasedOut = $1 . "\n" . $2;
+	}
+	
 	# return the re-cased translation
 	return $recasedOut;
 }
@@ -752,7 +756,9 @@ sub readSubtitles {
 					$delim = $LINE_BREAK;
 				}
 				
-				$result[$#result]->{'text'} .= $delim . postClean($line);
+				my $cleanLine = postClean($line);
+				$result[$#result]->{'text'} .= $delim . $cleanLine;
+				push @{$result[$#result]->{'lines'}}, $cleanLine;
 			}
 		}
 	}
