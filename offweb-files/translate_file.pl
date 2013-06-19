@@ -182,9 +182,9 @@ sub smartmate_translate {
 #		print Dumper($result);
 		print $result->code()."\n";
 		my $json = $result->content;
-		$json =~ s/^\s+//;
-		$json =~ s/\s+$//;
-		print $json."\n";
+		#$json =~ s/^\s+//;
+		#$json =~ s/\s+$//;
+		#print $json."\n";
 		$json = decode_json($json);
 		if ($json->{'success'}) {
 			$result=$json->{'translation'};

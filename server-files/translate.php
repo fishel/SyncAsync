@@ -310,11 +310,12 @@ function displayDemoTranslationForm() {
 			<select name="langpair">
 
 <?php
-	$langPairs = array("en-de-prof" => "English-German PROF",
-			   "nl-en" => "Dutch-English",
-			   "en-nl" => "English-Dutch",
-			   "de-en" => "German-English",
-                           "en-de" => "English-German"); 
+		    $langPairs = array("en-de" => "English-German",
+				       "en-nl" => "English-Dutch",
+				       "en-pt" => "English-Portugues", 
+				       "de-en" => "German-English",
+				       "nl-en" => "Dutch-English",
+				       "pt-en" => "Portugues-English"); 
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
 	}
@@ -349,11 +350,13 @@ function displayDemoTranslationForm() {
 
 <?php
 	#just for demo purposes
-	$langPairs = array("en-de-prof" => "English-German PROF",
-			   "nl-en" => "Dutch-English",
+	$langPairs = array("en-de" => "English-German",
 			   "en-nl" => "English-Dutch",
+			   "en-pt" => "English-Portugues",
 			   "de-en" => "German-English",
-                           "en-de" => "English-German"); 
+			   "nl-en" => "Dutch-English",
+			   "pt-en" => "Portugues-English",
+			   "ll-rr" => "DE-EN Prof"); 
 	
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
