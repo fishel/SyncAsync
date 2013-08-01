@@ -61,9 +61,15 @@ def ping(configfile, langpair):
     response = urllib2.urlopen(req)
     the_page = response.read()
     obj = json.loads(the_page)
-    if not 'result' in obj or not 'status' in obj['result']:
-        raise Exception, "engine for language pair [%s] does not exist on this server" % langpair
-    return obj['result']['status']
+    if not 'objects' in obj:
+        raise Exception, "no engine config on this server" % langpair
+    for engine in obj['objects']:
+        if 'id' in engine and engineOID == engine['id']:
+            m = re.match('^(\d+)\s+Running', engine['status'])
+            if m and int(m.group(1)) > 0:
+                return "running"
+            return engine['status']
+    raise Exception, "engine for language pair [%s] does not exist on this server" % langpair
 
 if __name__ == '__main__':
     try:
