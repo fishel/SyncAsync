@@ -1,8 +1,9 @@
 <?php
 	# NB! set the path to your config file here:
-        #$config = loadConfig("/home/mfishel/offweb/SyncAsync/offweb-files/config.ini");
-        $config = loadConfig("/var/www/AsyncTrSrv/offweb-files/config.ini");
-	#die("please update trcommon.php with your personal path to the config.ini file");
+        $configFileName = "/var/www/AsyncTrSrv/offweb-files/config.ini";
+	$config = loadConfig($configFileName);
+        #$config = "fail";
+	#die("please update trcommon.php with your personal path to the config.ini file, and then comment this line out");
 	
 	#path to the SQLite DB file
 	$dbPath = $config["db path"];
@@ -14,7 +15,8 @@
 	$trScript = $config["translation script"];
 
 	#support 2 kinds of output -- human-readable and machine-readable
-	$forHumans = isset($_GET['human']);
+	#$forHumans = isset($_GET['human']);
+	$forHumans = 1;
 	
 	#####
 	# prepare a connection to the SQLite database for job ID management
@@ -27,7 +29,7 @@
 		
 		#check if successful
 		if (!$result) {
-			die($forHumans? "failed to connect to local DB": $errorCode);
+			die($forHumans? "$ERROR_CODE\nfailed to connect to local DB": $errorCode);
 		}
 		
 		return $result;
@@ -39,15 +41,15 @@
 	function checkJob($db, $id, $ERROR_CODE) {
 		#find out the job status
 		$stmt = $db->prepare("select is_done, filename from trids where id = ?")
-			or die($forHumans? "Failed to prepare statement": $ERROR_CODE);
+			or die($forHumans? "$ERROR_CODE\nFailed to prepare statement": $ERROR_CODE);
 		$stmt->execute(array($id))
-			or die($forHumans? "Failed to execute statement": $ERROR_CODE);
+			or die($forHumans? "$ERROR_CODE\nFailed to execute statement": $ERROR_CODE);
 
 		$result = $stmt->fetch();
 
 		#if the job ID has not been registered, report an error
 		if (!$result) {
-			die($forHumans? "None such job ID registered": $ERROR_CODE);
+			die($forHumans? "$ERROR_CODE\nNone such job ID registered": $ERROR_CODE);
 		}
 		
 		return $result;
@@ -59,10 +61,10 @@
 	function clearJobEntry($db, $id, $ERROR_CODE) {
 		#find out the job status
 		$stmt = $db->prepare("delete from trids where id = ?")
-			or die($forHumans? "Failed to prepare statement": $ERROR_CODE);
+			or die($forHumans? "$ERROR_CODE\nFailed to prepare statement": $ERROR_CODE);
 		
 		$stmt->execute(array($id))
-			or die($forHumans? "Failed to execute statement": $ERROR_CODE);
+			or die($forHumans? "$ERROR_CODE\nFailed to execute statement": $ERROR_CODE);
 	}
 	
 	#####
@@ -148,5 +150,60 @@
 		}
 		
 		return $result;
+	}
+
+	#####
+	#
+	#####
+	function checkMosesServerUp($rawhost) {
+		$host = str_replace(array("http://", "https://", "/RPC2"), array("", "", ""), $rawhost);
+
+		$fp = fsockopen($host, -1, $errno, $errstr);
+		if ($fp) {
+			$query = "POST /RPC2 HTTP/1.0\nUser_Agent: My Client\nHost: ".$host."\nContent-Type: text/xml\nContent-Length: 3\n\nXXX\n";
+
+			if (!fputs($fp, $query, strlen($query))) {
+				die("Translation/recasing server is down (1)");
+			}
+
+			$contents = '';
+			while (!feof($fp)) {
+				$contents .= fgets($fp);
+			}
+
+			fclose($fp);
+			
+			if (!$contents) {
+				die("Translation/recasing server is down (2)");
+			}
+		}
+		else {
+			die("Translation/recasing server is down (3: $host / $errno / $errstr)");
+		}
+	}
+
+	#####
+	#
+	#####
+	function checkIfServersUp($langPair) {
+	  global $config, $configFileName;
+
+		if ($config['smartmate_translate']) {
+		  $sm_eng_stat = $config['smartmate_engine_status_script'];
+		  $status = exec("$sm_eng_stat \"" . $configFileName . "\" ".$langPair);
+		  if ($status != "running") {
+		    die($status);
+		  }
+		} else {
+		
+		  $langs = explode("-", $langPair);
+		  $tgtLang = $langs[1];
+		
+		  $trHostHash = confHash($config['translation host list']);
+		  $rcHostHash = confHash($config['recasing host list']);
+		
+		  checkMosesServerUp($trHostHash[$langPair]);
+		  checkMosesServerUp($rcHostHash[$tgtLang]);
+		}
 	}
 ?>

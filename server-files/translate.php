@@ -28,7 +28,7 @@ function processTranslationRequest() {
 		doTranslation($_FILES['trFile']);
 	}
 	else if ($forHumans) {
-		print "<p>Error handling request: neither trText parameter nor file parameter given</p>";
+		print "$ERROR_CODE\nError handling request: neither trText parameter nor file parameter given";
 	}
 	else {
 		print $ERROR_CODE;
@@ -89,7 +89,7 @@ function reportSyncResults($jobId) {
 	$translation = file_get_contents($path);
 	if ($translation === FALSE) {
 		if ($forHumans) {
-			print "<p>Failed to translate</p>";
+			print "$ERROR_CODE\nFailed to translate";
 		}
 		else {
 			print $ERROR_CODE;
@@ -108,15 +108,15 @@ function getNewId($db, $filename, $isdone = 0) {
 	
 	#create a statement for registering a new job ID in the database;
 	#entry initiated with a FALSE (0) value for the "is_done" field
-	$stmt = $db->prepare("insert into trids(is_done, filename) values(?, ?)") or die($forHumans? "Failed to prepare statement": $ERROR_CODE);
-	$stmt->execute(array($isdone, $filename)) or die($forHumans? "Failed to get ID": $ERROR_CODE);
+	$stmt = $db->prepare("insert into trids(is_done, filename) values(?, ?)") or die($forHumans? "$ERROR_CODE\nFailed to prepare statement": $ERROR_CODE);
+	$stmt->execute(array($isdone, $filename)) or die($forHumans? "$ERROR_CODE\nFailed to get ID": $ERROR_CODE);
 	
 	#get the inserted ID
 	$result = $db->lastInsertId();
 	
 	#check if successful
 	if (!$result) {
-		die($forHumans? "Failed to retrieve last-insert-ID": $ERROR_CODE);
+		die($forHumans? "$ERROR_CODE\nFailed to retrieve last-insert-ID": $ERROR_CODE);
 	}
 	
 	return $result;
@@ -134,7 +134,7 @@ function prepareJobPath($db, $origFileName) {
 	#save the job ID, if successfully registered
 	if (!$jobId) {
 		if ($forHumans) {
-			print "<p>Error processing " . $filename . "</p>";
+			print "$ERROR_CODE\nError processing " . $filename;
 		}
 		else {
 			print $ERROR_CODE;
@@ -145,7 +145,7 @@ function prepareJobPath($db, $origFileName) {
 	$jobPath = "$workDir/$jobId";
 	
 	#create a folder for the translation job, named after the job ID
-	mkdir($jobPath) or die($forHumans? "Failed to create job directory": $ERROR_CODE);
+	mkdir($jobPath) or die($forHumans? "$ERROR_CODE\nFailed to create job directory": $ERROR_CODE);
 	
 	return $jobId;
 }
@@ -159,53 +159,7 @@ function moveAsyncFile($fileInfo, $jobId) {
 	$jobPath = "$workDir/$jobId";
 	
 	move_uploaded_file($fileInfo['tmp_name'], "$jobPath/input.txt")
-		or die($forHumans? "Failed to upload file": $ERROR_CODE);
-}
-
-#####
-#
-#####
-function checkMosesServerUp($rawhost) {
-	$host = str_replace(array("http://", "https://", "/RPC2"), array("", "", ""), $rawhost);
-
-	$fp = fsockopen($host, -1, $errno, $errstr);
-	if ($fp) {
-		$query = "POST /RPC2 HTTP/1.0\nUser_Agent: My Client\nHost: ".$host."\nContent-Type: text/xml\nContent-Length: 3\n\nXXX\n";
-
-		if (!fputs($fp, $query, strlen($query))) {
-			die("Translation/recasing server is down");
-		}
-
-		$contents = '';
-		while (!feof($fp)) {
-			$contents .= fgets($fp);
-		}
-
-		fclose($fp);
-		
-		if (!$contents) {
-			die("Translation/recasing server is down");
-		}
-	}
-	else {
-		die("Translation/recasing server is down");
-	}
-}
-
-#####
-#
-#####
-function checkIfServersUp($langPair) {
-	global $config;
-	
-	$langs = explode("-", $langPair);
-	$tgtLang = $langs[1];
-	
-	$trHostHash = confHash($config['translation host list']);
-	$rcHostHash = confHash($config['recasing host list']);
-	
-	checkMosesServerUp($trHostHash[$langPair]);
-	checkMosesServerUp($rcHostHash[$tgtLang]);
+		or die($forHumans? "$ERROR_CODE\nFailed to upload file": $ERROR_CODE);
 }
 
 #####
@@ -214,7 +168,7 @@ function checkIfServersUp($langPair) {
 function startTranslation($langPair, $jobId, $origFileName, $syncMode) {
   global $workDir, $trScript, $forHumans, $ERROR_CODE, $config;
 	
-        if (! $config['smartmate_translate']) {
+	if (! $config['smartmate_translate']) {
 	    checkIfServersUp($langPair);
 	}
 	
@@ -232,7 +186,7 @@ function startTranslation($langPair, $jobId, $origFileName, $syncMode) {
 	
 	#check if successful
 	if ($status != 0) {
-		die ($forHumans? "Failed to start translation process; proc status $status": $ERROR_CODE);
+		die ($forHumans? "$ERROR_CODE\nFailed to start translation process; proc status $status": $ERROR_CODE);
 	}
 }
 
@@ -357,7 +311,6 @@ function displayDemoTranslationForm() {
 			   "nl-en" => "Dutch-English",
 			   "pt-en" => "Portugues-English",
 			   "ll-rr" => "DE-EN Prof"); 
-	
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
 	}
