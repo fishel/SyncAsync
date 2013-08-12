@@ -14,6 +14,11 @@ use URI::Escape;
 use JSON;
 use Data::Dumper;
 
+#requires perl 5.10+
+use feature 'state';
+
+use IPC::Open2;
+
 binmode(STDOUT, ':utf8');
 
 our $LINE_BREAK = " _br_ ";
@@ -192,6 +197,20 @@ sub smartmate_translate {
 		} else {
 			sleep(10);
 		}
+	}
+
+	if (defined($config->{'post processing list'})) {
+	    state $ppList = confHash($config->{'post processing list'});
+	    if (defined($ppList->{$langPair})) {
+	     	state $ppCmd = $ppList->{$langPair};
+	     	#state requires Perl 5.10+
+	     	state ($ppIn, $ppOut);
+	     	state $ppPipe = open2($ppOut, $ppIn, $ppCmd);
+	     	print $ppIn Encode::encode("utf8", $result)."\n";
+	     	$ppIn->flush();
+	     	$result = <$ppOut>;
+	     	chomp $result;
+	    }
 	}
 
 	#chomp $result;
