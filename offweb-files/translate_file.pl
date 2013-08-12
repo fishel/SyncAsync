@@ -208,7 +208,7 @@ sub smartmate_translate {
 	     	state $ppPipe = open2($ppOut, $ppIn, $ppCmd);
 	     	print $ppIn Encode::encode("utf8", $result)."\n";
 	     	$ppIn->flush();
-	     	$result = <$ppOut>;
+	     	$result = Encode::decode("utf8", <$ppOut>);
 	     	chomp $result;
 	    }
 	}
