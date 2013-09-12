@@ -14,6 +14,11 @@ use URI::Escape;
 use JSON;
 use Data::Dumper;
 
+#requires perl 5.10+
+use feature 'state';
+
+use IPC::Open2;
+
 binmode(STDOUT, ':utf8');
 
 our $LINE_BREAK = " _br_ ";
@@ -189,9 +194,9 @@ sub smartmate_translate {
 #		print Dumper($result);
 		print $result->code()."\n";
 		my $json = $result->content;
-		$json =~ s/^\s+//;
-		$json =~ s/\s+$//;
-		print $json."\n";
+		#$json =~ s/^\s+//;
+		#$json =~ s/\s+$//;
+		#print $json."\n";
 		$json = decode_json($json);
 		if ($json->{'success'}) {
 			$result=$json->{'translation'};
@@ -199,6 +204,20 @@ sub smartmate_translate {
 		} else {
 			sleep(10);
 		}
+	}
+
+	if (defined($config->{'post processing list'})) {
+	    state $ppList = confHash($config->{'post processing list'});
+	    if (defined($ppList->{$langPair})) {
+	     	state $ppCmd = $ppList->{$langPair};
+	     	#state requires Perl 5.10+
+	     	state ($ppIn, $ppOut);
+	     	state $ppPipe = open2($ppOut, $ppIn, $ppCmd);
+	     	print $ppIn Encode::encode("utf8", $result)."\n";
+	     	$ppIn->flush();
+	     	$result = Encode::decode("utf8", <$ppOut>);
+	     	chomp $result;
+	    }
 	}
 
 	#chomp $result;
@@ -758,7 +777,7 @@ sub translate {
 	
 	#print "DEBUG: " . join("\n######\n", "", $text, $prepText, $rawOut, $recasedOut, "") . "----\n";
 	
-	if ($cell->{'lines'} and scalar(@{$cell->{'lines'}}) == 2 and $cell->{'lines'}->[0] =~ /^-/ and $cell->{'lines'}->[1] =~ /^-/ and $recasedOut =~ /^(- .*)(- .*)$/) {
+	if ($cell->{'lines'} and scalar(@{$cell->{'lines'}}) == 2 and $cell->{'lines'}->[0] =~ /^-/ and $cell->{'lines'}->[1] =~ /^-/ and $recasedOut =~ /^(-.*)(-.*)$/) {
 		$recasedOut = $1 . "\n" . $2;
 	}
 	

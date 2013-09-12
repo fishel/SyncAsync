@@ -1,8 +1,9 @@
 <?php
 	# NB! set the path to your config file here:
-	#$config = loadConfig("/home/mphi/offweb/SyncAsync/offweb-files/config.ini");
-	$config = "fail";
-	die("please update trcommon.php with your personal path to the config.ini file, and then comment this line out");
+        $configFileName = "/var/www/AsyncTrSrv/offweb-files/config.ini";
+	$config = loadConfig($configFileName);
+        #$config = "fail";
+	#die("please update trcommon.php with your personal path to the config.ini file, and then comment this line out");
 	
 	#path to the SQLite DB file
 	$dbPath = $config["db path"];
@@ -192,17 +193,25 @@
 	#
 	#####
 	function checkIfServersUp($langPair) {
-		global $config;
-		
-		$langs = explode("-", $langPair);
-		$tgtLang = $langs[1];
-		
-		$trHostHash = confHash($config['translation host list']);
-		checkMosesServerUp($trHostHash[$langPair]);
-		
-		if (!confBool($config['do truecasing'])) {
-			$rcHostHash = confHash($config['recasing host list']);
-			checkMosesServerUp($rcHostHash[$tgtLang]);
+	  global $config, $configFileName;
+	
+		if ($config['smartmate_translate']) {
+		  $sm_eng_stat = $config['smartmate_engine_status_script'];
+		  $status = exec("$sm_eng_stat \"" . $configFileName . "\" ".$langPair);
+		  if ($status != "running") {
+		    die($status);
+		  }
+		} else {
+			$langs = explode("-", $langPair);
+			$tgtLang = $langs[1];
+			
+			$trHostHash = confHash($config['translation host list']);
+			checkMosesServerUp($trHostHash[$langPair]);
+			
+			if (!confBool($config['do truecasing'])) {
+				$rcHostHash = confHash($config['recasing host list']);
+				checkMosesServerUp($rcHostHash[$tgtLang]);
+			}
 		}
 	}
 ?>
