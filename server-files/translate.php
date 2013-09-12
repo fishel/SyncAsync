@@ -95,14 +95,14 @@ function reportSyncResults($jobId, $time) {
 	
 	if ($translation === FALSE) {
 		if ($forHumans) {
-			print "$ERROR_CODE\n$time\nFailed to translate";
+			print "<pre>$ERROR_CODE\n$time\nFailed to translate</pre>";
 		}
 		else {
 			print $ERROR_CODE;
 		}
 	}
 	else {
-		print "2\n$time\n$translation";
+		print "<pre>2\n$time\n$translation</pre>";
 	}
 }
 
