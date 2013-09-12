@@ -44,6 +44,8 @@ function doTranslation($fileInfo) {
 	
 	$syncMode = !$fileInfo;
 	
+	$startTime = microtime(true);
+	
 	$filename = ($syncMode? null: $fileInfo['name']);
 	
 	#create a DB connection
@@ -63,8 +65,10 @@ function doTranslation($fileInfo) {
 	
 	startTranslation($langPair, $jobId, $filename, $syncMode);
 	
+	$endTime = microtime(true);
+	
 	if ($syncMode) {
-		reportSyncResults($jobId);
+		reportSyncResults($jobId, $endTime - $startTime);
 	}
 	else {
 		reportAsyncResults($jobId, $filename);
@@ -83,20 +87,22 @@ function saveText($text, $jobId) {
 #####
 #
 #####
-function reportSyncResults($jobId) {
+function reportSyncResults($jobId, $time) {
 	global $workDir, $ERROR_CODE, $forHumans;
+	
 	$path = "$workDir/$jobId/output.txt";
 	$translation = file_get_contents($path);
+	
 	if ($translation === FALSE) {
 		if ($forHumans) {
-			print "$ERROR_CODE\nFailed to translate";
+			print "$ERROR_CODE\n$time\nFailed to translate";
 		}
 		else {
 			print $ERROR_CODE;
 		}
 	}
 	else {
-		print "<pre>0\n$translation</pre>";
+		print "0\n$time\n$translation";
 	}
 }
 

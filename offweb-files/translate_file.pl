@@ -56,7 +56,11 @@ sub processFile {
 	my $tmpFilenames = initTmpFilenames($config, $jobId);
 	
 	# tokenize input using the configurated external script
-	doTokenization($config, $tmpFilenames, $langPair);
+	my $fileToTranslate = doTokenization($config, $tmpFilenames, $langPair);
+	
+	if (confBool($config->{'do truecasing'})) {
+		$fileToTranslate = doTrueCasing($config, $tmpFilenames, $langPair);
+	}
 
 	##### translate and re-case input #####
 
@@ -70,18 +74,21 @@ sub processFile {
 	}
 	
 	my ($srcLang, $tgtLang) = split(/-/, $langPair);
-	my $recaseProxy = getProxy($config, 'recasing host list', $tgtLang);
+	my $recaseProxy = undef;
+	unless (confBool($config->{'do truecasing'})) {
+		$recaseProxy = getProxy($config, 'recasing host list', $tgtLang);
+	}
 
 	# open input and output files
-	my $inFh = fopen($tmpFilenames->{'tok'});
-	my $outFh = fopen(">" . $tmpFilenames->{'rawtrans'});
+	my $inFh = fopen($fileToTranslate);
+	my $outFh = fopen(">" . $tmpFilenames->{'transl'});
 	
 	my @subs = readSubtitles($inFh);
 	
 	my $t0 = gettime();
 	
 	for my $cell (@subs) {
-		# perform lower-casing, translation and re-casing
+		# perform lower-casing or true-casing, translation and re-casing or de-true-casing
 		my $outText = translate($config, $cell, $translProxy, $recaseProxy, $langPair, $ua);
 		
 		displayResults($outFh, $cell, $outText);
@@ -478,15 +485,16 @@ sub initTmpFilenames {
 	my $jobPath = $config->{'work dir'} . "/" . $jobId;
 	
 	# input = raw input file
-	# tok = tokenized input file
-	# rawtrans = translated, re-cased file
+	# tok = tokenized file
+	# truecase = true-cased tokenized file
+	# transl = translated, re-cased file
 	# detok = de-tokenized file
 	# output = final output file
 	
 	# toklog = log file of the tokenizer
 	# detoklog = log file of the de-tokenizer
 	
-	return {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok rawtrans detok output toklog detoklog)};
+	return {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok truecase transl detok output toklog detoklog truecaselog)};
 }
 
 #####
@@ -495,11 +503,11 @@ sub initTmpFilenames {
 sub doTokenization {
 	my ($config, $tmpNames, $langPair) = @_;
 	
-	my $rawTextMode = confBool($config->{'raw text mode'});
+	my $resultFilename = $tmpNames->{'tok'};
 	
 	# if in raw text mode, skip tokenization
-	if ($rawTextMode) {
-		$tmpNames->{'tok'} = $tmpNames->{'input'};
+	if (confBool($config->{'raw text mode'})) {
+		$resultFilename = $tmpNames->{'input'};
 	}
 	else {
 		my ($srcLang) = split(/-/, $langPair);
@@ -521,9 +529,57 @@ sub doTokenization {
 		}
 	}
 	
-	unless (-e $tmpNames->{'tok'}) {
-		die("Tokenized input file was not generated");
+	unless (-e $resultFilename) {
+		die("Tokenized file (`$resultFilename') was not generated");
 	}
+	
+	return $resultFilename;
+}
+
+#####
+#
+#####
+sub doTrueCasing {
+	my ($config, $tmpNames, $langPair) = @_;
+	
+	my $resultFilename = $tmpNames->{'truecase'};
+	
+	# if in raw text mode, skip tokenization
+	if (confBool($config->{'raw text mode'})) {
+		$resultFilename = $tmpNames->{'input'};
+	}
+	else {
+		my ($srcLang) = split(/-/, $langPair);
+		
+		my $modelHash = confHash($config->{'truecaser model list'});
+		my $modelPath = $modelHash->{$srcLang};
+		
+		unless ($modelPath) {
+			die("True-casing is turned on, but the model path for the language `$srcLang' is not set");
+		}
+		
+		my $truecaserPath = $Bin . "/subs-truecase.pl";
+		
+		system(sprintf("%s --model %s < %s > %s 2> %s",
+			$truecaserPath,
+			$modelPath,
+			$tmpNames->{'tok'},
+			$tmpNames->{'truecase'},
+			$tmpNames->{'truecaselog'}));
+		
+		my $status = $?;
+		my $msg = $!;
+		
+		unless ($? == 0) {
+			die("Failed to true-case file ($status / $msg)");
+		}
+	}
+	
+	unless (-e $resultFilename) {
+		die("True-cased file (`$resultFilename') was not generated");
+	}
+	
+	return $resultFilename;
 }
 
 #####
@@ -536,7 +592,7 @@ sub doDeTokenization {
 	
 	# if in raw text mode, skip de-tokenization
 	if ($rawTextMode) {
-		$tmpNames->{'detok'} = $tmpNames->{'rawtrans'};
+		$tmpNames->{'detok'} = $tmpNames->{'transl'};
 	}
 	else {
 		my ($srcLang, $tgtLang) = split(/-/, $langPair);
@@ -547,7 +603,7 @@ sub doDeTokenization {
 		system(sprintf("%s -l %s < %s > %s 2> %s",
 			$detokScript,
 			$tgtLang,
-			$tmpNames->{'rawtrans'},
+			$tmpNames->{'transl'},
 			$tmpNames->{'detok'},
 			$tmpNames->{'detoklog'}));
 		
@@ -591,27 +647,34 @@ sub getProxy {
 #
 #####
 sub lowerCase {
-	my ($config, $text) = @_;
+	my ($config, $text, $langPair) = @_;
 	
-	my $rawTextMode = confBool($config->{'raw text mode'});
-	
-	return ($rawTextMode? $text: lc($text));
+	if (confBool($config->{'raw text mode'}) or confBool($config->{'do truecasing'})) {
+		return $text;
+	}
+	else {
+		return lc($text);
+	}
 }
 
 #####
 #
 #####
-sub reCase {
+sub restoreCase {
 	my ($config, $rawTranslation, $proxy) = @_;
 	
-	my $rawTextMode = confBool($config->{'raw text mode'});
-	
-	if ($rawTextMode) {
+	if (confBool($config->{'raw text mode'})) {
 		return $rawTranslation;
 	}
 	else {
-		my $rawReCased = communicate($config, $proxy, $rawTranslation);
-		return finalizeRecasing($rawReCased);
+		my $almostFinalResult = $rawTranslation;
+		
+		unless (confBool($config->{'do truecasing'})) {
+			$almostFinalResult = communicate($config, $proxy, $rawTranslation);
+		}
+		
+		#TODO check against subs-detruecase.pl
+		return finalizeRecasing($almostFinalResult);
 	}
 }
 
@@ -665,16 +728,16 @@ sub translate {
 	my $hashToStr = join(", ", map { $_ . ": `" . $cell->{$_} . "'" } sort keys %$cell);
 	
 	# lower-case
-	my $lcText = lowerCase($config, $text);
+	my $prepText = lowerCase($config, $text);
 	
 	my $rawOut = undef;
 	
 	# translate
 	eval {
-		$rawOut = communicate($config, $translProxy, $lcText, $langPair, $ua);
+		$rawOut = communicate($config, $translProxy, $prepText, $langPair, $ua);
 	};
 	
-	if ($@ or (!$rawOut and $lcText !~ /^\s*$/ ) ) {
+	if ($@ or (!$rawOut and $prepText !~ /^\s*$/ ) ) {
 		die("Failed to translate subtitle ($hashToStr), error message: $@");
 	}
 	
@@ -682,7 +745,7 @@ sub translate {
 	my $recasedOut = undef;
 	
 	eval {
-		$recasedOut = reCase($config, $rawOut, $recaseProxy);
+		$recasedOut = restoreCase($config, $rawOut, $recaseProxy);
 	};
 	
 	if ($@ or (!$recasedOut and $rawOut !~ /^\s*$/) ) {
@@ -693,11 +756,13 @@ sub translate {
 	my $lineBreakReplacement = confBool($config->{"line-breaks"})? "\n": " ";
 	$recasedOut =~ s/\Q$LINE_BREAK\E/$lineBreakReplacement/g;
 	
-	#print "DEBUG: " . join("\n######\n", "", $text, $lcText, $rawOut, $recasedOut, "") . "----\n";
+	#print "DEBUG: " . join("\n######\n", "", $text, $prepText, $rawOut, $recasedOut, "") . "----\n";
 	
 	if ($cell->{'lines'} and scalar(@{$cell->{'lines'}}) == 2 and $cell->{'lines'}->[0] =~ /^-/ and $cell->{'lines'}->[1] =~ /^-/ and $recasedOut =~ /^(- .*)(- .*)$/) {
 		$recasedOut = $1 . "\n" . $2;
 	}
+	
+	$recasedOut =~ s/\(\.{3}\) \(\.{3}\)/\1\n\2/g;
 	
 	# return the re-cased translation
 	return $recasedOut;
@@ -733,7 +798,7 @@ sub readSubtitles {
 	my @rawLines = map { s/[\n\r]//g; $_ } <$inFh>;
 	my @result = ();
 	
-	my $hasTimeCodes = ($rawLines[0] =~ /^\d+(\s+\d{2}(\s*:\s*\d{2}){3}){2}$/);
+	my $hasTimeCodes = ($rawLines[0] =~ /^\d+(\s+\d{2}(\s*:\s*\d{2}){3}){2}\s*$/);
 	
 	print "DEBUG has time codes: $hasTimeCodes;\n";
 	
@@ -741,7 +806,7 @@ sub readSubtitles {
 		for my $line (@rawLines) {
 			
 			#time-code
-			if ($line =~ /^(\d+)\s+(\d{2}(?:\s*:\s*\d{2}){3})\s+(\d{2}(?:\s*:\s*\d{2}){3})$/) {
+			if ($line =~ /^(\d+)\s+(\d{2}(?:\s*:\s*\d{2}){3})\s+(\d{2}(?:\s*:\s*\d{2}){3})\s*$/) {
 				my ($idx, $from, $to) = ($1, $2, $3);
 				
 				$from =~ s/ //g;

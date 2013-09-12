@@ -10,7 +10,7 @@
 	#base path where translation job directories will be created
 	$workDir = $config["work dir"];
 
-	#translation script path
+	#translation script path: NB! this line assumes linux path separators (ugly hack)
 	$trScript = $config["translation script"];
 
 	#support 2 kinds of output -- human-readable and machine-readable
@@ -137,6 +137,13 @@
 	#####
 	#
 	#####
+	function confBool($configStr) {
+		return ($configStr == "true");
+	}
+	
+	#####
+	#
+	#####
 	function confHash($configStr) {
 		$lines = explode("\n", $configStr);
 		$result = array();
@@ -191,9 +198,11 @@
 		$tgtLang = $langs[1];
 		
 		$trHostHash = confHash($config['translation host list']);
-		$rcHostHash = confHash($config['recasing host list']);
-		
 		checkMosesServerUp($trHostHash[$langPair]);
-		checkMosesServerUp($rcHostHash[$tgtLang]);
+		
+		if (!confBool($config['do truecasing'])) {
+			$rcHostHash = confHash($config['recasing host list']);
+			checkMosesServerUp($rcHostHash[$tgtLang]);
+		}
 	}
 ?>
