@@ -102,7 +102,7 @@ function reportSyncResults($jobId, $time) {
 		}
 	}
 	else {
-		print "0\n$time\n$translation";
+		print "2\n$time\n$translation";
 	}
 }
 
