@@ -111,6 +111,9 @@ sub processFile {
 	
 	# convert to dos or unix into "output.txt" as a final step
 	finalizeLineEndings($config, $tmpFilenames);
+	
+	# TODO: convert to srt
+	generateSrtFile($config, $tmpFilenames);
 
 	# report results by either performing a call-back (if the host is configured) or by updating the job the status
 	if ($origFilename) {
@@ -441,7 +444,7 @@ sub cleanup {
 #
 #####
 sub performCallBack {
-	my ($jobId, $origFilename, $resultPath, $errorMessage) = @_;
+	my ($jobId, $origFilename, $resultPaths, $errorMessage) = @_;
 	
 	my $curl = WWW::Curl::Easy->new;
 
@@ -450,10 +453,11 @@ sub performCallBack {
 	$curlForm->formadd("fileName", $origFilename);
 	$curlForm->formadd("error", $errorMessage);
 	
-	print $resultPath."\n";
-	if (defined($resultPath)) {
+	if (defined($resultPaths)) {
 		print "adding file\n";
-		$curlForm->formaddfile($resultPath, "file", "multipart/form-data");
+		$curlForm->formaddfile($resultPaths->{'output'}, "file", "multipart/form-data");
+		print "adding srt file too\n";
+		$curlForm->formaddfile($resultPaths->{'srt'}, "srtfile", "multipart/form-data");
 	}
 
 	$curl->setopt(CURLOPT_HTTPPOST, $curlForm);
@@ -513,7 +517,9 @@ sub initTmpFilenames {
 	# toklog = log file of the tokenizer
 	# detoklog = log file of the de-tokenizer
 	
-	return {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok truecase transl detok output toklog detoklog truecaselog)};
+	$result = {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok truecase transl detok output toklog detoklog truecaselog)};
+	$result['srt'] = $jobPath . "/" . "output.srt";
+	return $result;
 }
 
 #####
@@ -646,7 +652,18 @@ sub finalizeLineEndings {
 	
 	my $cmd = sprintf("%s < %s > %s", $finScript, $tmpFilenames->{'detok'}, $tmpFilenames->{'output'});
 	
-	print "LOG: $cmd;\n";
+	system($cmd);
+}
+
+#####
+#
+#####
+sub generateSrtFile {
+	my ($config, $tmpFilenames) = @_;
+	
+	my $convScript = $Bin . "/txt2srt.pl";
+	
+	my $cmd = sprintf("%s < %s > %s", $convScript, $tmpFilenames->{'output'}, $tmpFilenames->{'srt'});
 	
 	system($cmd);
 }
@@ -719,7 +736,7 @@ sub reportResults {
 	
 	# if the call-back URL is defined, perform call-back
 	if (defined($config->{'call-back url'})) {
-		performCallBack($jobId, $origFilename, $tmpNames->{'output'});
+		performCallBack($jobId, $origFilename, $tmpNames);
 		
 		# initialize a DB connection
 		my $dbh = connectDb($config);
