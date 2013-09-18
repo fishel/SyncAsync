@@ -517,8 +517,8 @@ sub initTmpFilenames {
 	# toklog = log file of the tokenizer
 	# detoklog = log file of the de-tokenizer
 	
-	$result = {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok truecase transl detok output toklog detoklog truecaselog)};
-	$result['srt'] = $jobPath . "/" . "output.srt";
+	my $result = {map { $_ => $jobPath . "/" . $_ . ".txt" } qw(input tok truecase transl detok output toklog detoklog truecaselog)};
+	$result->{'srt'} = $jobPath . "/" . "output.srt";
 	return $result;
 }
 
