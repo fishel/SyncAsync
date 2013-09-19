@@ -102,7 +102,7 @@ function reportSyncResults($jobId, $time) {
 		}
 	}
 	else {
-		print "<pre>2\n$time\n$translation</pre>";
+		print "<pre>2\n$time\n$jobId\n$translation</pre>";
 	}
 }
 
@@ -270,12 +270,7 @@ function displayDemoTranslationForm() {
 			<select name="langpair">
 
 <?php
-		    $langPairs = array("en-de" => "English-German",
-				       "en-nl" => "English-Dutch",
-				       "en-pt" => "English-Portugues", 
-				       "de-en" => "German-English",
-				       "nl-en" => "Dutch-English",
-				       "pt-en" => "Portugues-English"); 
+		    $langPairs = array("en-sv" => "English-Swedish", "sv-en" => "Swedish-English"); 
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
 	}
@@ -310,13 +305,7 @@ function displayDemoTranslationForm() {
 
 <?php
 	#just for demo purposes
-	$langPairs = array("en-de" => "English-German",
-			   "en-nl" => "English-Dutch",
-			   "en-pt" => "English-Portugues",
-			   "de-en" => "German-English",
-			   "nl-en" => "Dutch-English",
-			   "pt-en" => "Portugues-English",
-			   "ll-rr" => "DE-EN Prof"); 
+	$langPairs = array("en-sv" => "English-Swedish", "sv-en" => "Swedish-English"); 
 	foreach ($langPairs as $short => $full) {
 		print "\t\t\t<option value=\"$short\">$full</option>\n";
 	}
