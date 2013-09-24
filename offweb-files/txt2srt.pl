@@ -9,6 +9,8 @@ while (<STDIN>) {
 		
 		my ($s1, $s2) = ($f1 * 40, $f2 * 40);
 		
+		$idx =~ s/^0*//g;
+		
 		print "$idx$nl$t1,$s1 --> $t2,$s2$nl";
 	}
 	else {
