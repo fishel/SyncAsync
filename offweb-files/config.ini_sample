@@ -43,6 +43,9 @@ tokenizer = /home/mfishel/offweb/scripts/tokenization/tokenizer-modified
 # location of the de-tokenizer script
 detokenizer = /home/mfishel/offweb/scripts/detokenizer.perl
 
+# the number of threads to use _per file_
+max threads = 5
+
 # set to "true" to replace lowercasing and recasing with truecasing and detruecasing
 do truecasing = false
 

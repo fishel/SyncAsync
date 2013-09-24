@@ -10,6 +10,9 @@ use Time::HiRes qw(gettimeofday);
 use RPC::XML;
 use RPC::XML::Client;
 
+use threads;
+use threads::shared;
+
 use URI::Escape;
 use JSON;
 use Data::Dumper;
@@ -85,26 +88,12 @@ sub processFile {
 	}
 
 	# open input and output files
+	
 	my $inFh = fopen($fileToTranslate);
-	my $outFh = fopen(">" . $tmpFilenames->{'transl'});
-	
 	my @subs = readSubtitles($inFh);
-	
-	my $t0 = gettime();
-	
-	for my $cell (@subs) {
-		# perform lower-casing or true-casing, translation and re-casing or de-true-casing
-		my $outText = translate($config, $cell, $translProxy, $recaseProxy, $langPair, $ua);
-		
-		displayResults($outFh, $cell, $outText);
-	}
-
-	my $t1 = gettime();
-	
-	print "DEBUG total translation time: " . ($t1 - $t0) . "; #subs: " . (scalar @subs) . "\n";
-
-	close($outFh);
 	close($inFh);
+	
+	translateSubtitles(\@subs, $tmpFilenames->{'transl'}, $config, $translProxy, $recaseProxy, $langPair, $ua);
 
 	# de-tokenize output using the configurated external script
 	doDeTokenization($config, $tmpFilenames, $langPair);
@@ -112,13 +101,60 @@ sub processFile {
 	# convert to dos or unix into "output.txt" as a final step
 	finalizeLineEndings($config, $tmpFilenames);
 	
-	# TODO: convert to srt
+	# convert to srt
 	generateSrtFile($config, $tmpFilenames);
 
 	# report results by either performing a call-back (if the host is configured) or by updating the job the status
 	if ($origFilename) {
 		reportResults($config, $jobId, $tmpFilenames, $origFilename);
 	}
+}
+
+#####
+#
+#####
+sub translateSubtitles {
+	my ($subs, $outfile, $config, $translProxy, $recaseProxy, $langPair, $ua) = @_;
+	
+	#my $subs = shared_clone($nonsharedSubs);
+	
+	my $t0 = gettime();
+	
+	my $outFh = fopen(">" . $outfile);
+	
+	my $maxThreads = 0 + $config->{'max threads'};
+	if ($maxThreads < 1) {
+		$maxThreads = 1;
+	}
+	
+	print "DEBUG max threads: $maxThreads\n";
+	
+	for my $cell (@$subs) {
+		# perform lower-casing or true-casing, translation and re-casing or de-true-casing
+		
+		my $countThreads = scalar threads->list(threads::running);
+		
+		while ($countThreads > $maxThreads) {
+			#sleep 0.1 seconds
+			select(undef, undef, undef, 0.1);
+			
+			$countThreads = scalar threads->list(threads::running);
+		}
+		
+		$cell->{'thread'} = threads->create(\&translateOneSubtitle, $config, $cell, $translProxy, $recaseProxy, $langPair, $ua);
+		#$cell->{'output'} = finalizeRecasing(translateOneSubtitle($config, $cell, $translProxy, $recaseProxy, $langPair, $ua));
+	}
+		
+	for my $cell (@$subs) {
+		$cell->{'output'} = finalizeRecasing($cell->{'thread'}->join());
+		displayResults($outFh, $cell);
+	}
+	
+	close($outFh);
+
+	my $t1 = gettime();
+	
+	print "DEBUG total translation time: " . ($t1 - $t0) . "; #subs: " . (scalar @$subs) . "\n";
 }
 
 #####
@@ -146,13 +182,13 @@ sub fopen {
 #
 #####
 sub displayResults {
-	my ($outFh, $cell, $translation) = @_;
+	my ($outFh, $cell) = @_;
 	
 	my $timeCodedOutput = (defined($cell->{'timecode'}));
 	
 	print $outFh 
 		($timeCodedOutput? $cell->{'timecode'} . "\n": "") .
-		$translation . "\n" .
+		$cell->{'output'} . "\n" .
 		($timeCodedOutput? "\n": "");
 }
 
@@ -709,8 +745,10 @@ sub restoreCase {
 			$almostFinalResult = communicate($config, $proxy, $rawTranslation);
 		}
 		
-		#TODO check against subs-detruecase.pl
-		return finalizeRecasing($almostFinalResult);
+		#my $finalResult = finalizeRecasing($almostFinalResult);
+		
+		#return $finalResult;
+		return $almostFinalResult;
 	}
 }
 
@@ -757,7 +795,7 @@ sub reportResults {
 #####
 #
 #####
-sub translate {
+sub translateOneSubtitle {
 	my ($config, $cell, $translProxy, $recaseProxy, $langPair, $ua) = @_;
 	
 	my $text = $cell->{'text'};
@@ -792,7 +830,7 @@ sub translate {
 	my $lineBreakReplacement = confBool($config->{"line-breaks"})? "\n": " ";
 	$recasedOut =~ s/\Q$LINE_BREAK\E/$lineBreakReplacement/g;
 	
-	#print "DEBUG: " . join("\n######\n", "", $text, $prepText, $rawOut, $recasedOut, "") . "----\n";
+	#print "DEBUG: " . join(" ###### ", "", $text, $prepText, $rawOut, $recasedOut, "") . "----\n";
 	
 	if ($cell->{'lines'} and scalar(@{$cell->{'lines'}}) == 2 and $cell->{'lines'}->[0] =~ /^-/ and $cell->{'lines'}->[1] =~ /^-/ and $recasedOut =~ /^(-.*)(-.*)$/) {
 		$recasedOut = $1 . "\n" . $2;
@@ -801,6 +839,7 @@ sub translate {
 	$recasedOut =~ s/\(\.{3}\) \(\.{3}\)/\1\n\2/g;
 	
 	# return the re-cased translation
+	#$cell->{'output'} = $recasedOut;
 	return $recasedOut;
 }
 
