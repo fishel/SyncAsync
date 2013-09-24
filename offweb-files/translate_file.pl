@@ -141,12 +141,12 @@ sub translateSubtitles {
 			$countThreads = scalar threads->list(threads::running);
 		}
 		
-		$cell->{'thread'} = threads->create(\&translateOneSubtitle, $config, $cell, $translProxy, $recaseProxy, $langPair, $ua);
-		#$cell->{'output'} = finalizeRecasing(translateOneSubtitle($config, $cell, $translProxy, $recaseProxy, $langPair, $ua));
+		#$cell->{'thread'} = threads->create(\&translateOneSubtitle, $config, $cell, $translProxy, $recaseProxy, $langPair, $ua);
+		$cell->{'output'} = finalizeRecasing(translateOneSubtitle($config, $cell, $translProxy, $recaseProxy, $langPair, $ua));
 	}
 		
 	for my $cell (@$subs) {
-		$cell->{'output'} = finalizeRecasing($cell->{'thread'}->join());
+		#$cell->{'output'} = finalizeRecasing($cell->{'thread'}->join());
 		displayResults($outFh, $cell);
 	}
 	
@@ -699,7 +699,7 @@ sub generateSrtFile {
 	
 	my $convScript = $Bin . "/txt2srt.pl";
 	
-	my $cmd = sprintf("%s < %s > %s", $convScript, $tmpFilenames->{'output'}, $tmpFilenames->{'srt'});
+	my $cmd = sprintf("%s < %s | iconv -c -f utf8 -t latin1 > %s", $convScript, $tmpFilenames->{'output'}, $tmpFilenames->{'srt'});
 	
 	system($cmd);
 }
