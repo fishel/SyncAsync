@@ -43,7 +43,10 @@ tokenizer = /home/mfishel/offweb/scripts/tokenization/tokenizer-modified
 # location of the de-tokenizer script
 detokenizer = /home/mfishel/offweb/scripts/detokenizer.perl
 
-# the number of threads to use _per file_
+# the number of threads to use per file. In other words
+# this is the number of segments sent in parallel to the Moses server;
+# the server'ssetting of the number of threads is an independent setting
+# and has to be given to the Moses server itself
 max threads = 5
 
 # set to "true" to replace lowercasing and recasing with truecasing and detruecasing
