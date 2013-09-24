@@ -699,7 +699,7 @@ sub generateSrtFile {
 	
 	my $convScript = $Bin . "/txt2srt.pl";
 	
-	my $cmd = sprintf("%s < %s | iconv -c -f utf8 -t latin1 > %s", $convScript, $tmpFilenames->{'output'}, $tmpFilenames->{'srt'});
+	my $cmd = sprintf("%s < %s | iconv -c -f utf8 -t cp1252 > %s", $convScript, $tmpFilenames->{'output'}, $tmpFilenames->{'srt'});
 	
 	system($cmd);
 }
