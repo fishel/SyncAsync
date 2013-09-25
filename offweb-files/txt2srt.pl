@@ -7,7 +7,7 @@ while (<STDIN>) {
 	if (/^\s*(\d+)\s+(\d\d:\d\d:\d\d):(\d\d)\s+(\d\d:\d\d:\d\d):(\d\d)\s*$/) {
 		my ($idx, $t1, $f1, $t2, $f2) = ($1, $2, $3, $4, $5);
 		
-		my ($s1, $s2) = ($f1 * 40, $f2 * 40);
+		my ($s1, $s2) = (sprintf("%03d", $f1 * 40), sprintf("%03d", $f2 * 40));
 		
 		$idx =~ s/^0*//g;
 		
