@@ -108,7 +108,7 @@ sub processFile {
 
 	# report results by either performing a call-back (if the host is configured) or by updating the job the status
 	if ($origFilename) {
-		reportResults($config, $jobId, $tmpFilenames, $origFilename);
+		reportResults($config, $jobId, $tmpFilenames, $origFilename, scalar @subs);
 	}
 }
 
@@ -524,12 +524,14 @@ sub reportProgress {
 #
 #####
 sub performCallBack {
-	my ($jobId, $origFilename, $resultPaths, $errorMessage) = @_;
+	my ($jobId, $origFilename, $resultPaths, $errorMessage, $numTotal) = @_;
 	
 	my $curl = WWW::Curl::Easy->new;
 
 	my $curlForm = WWW::Curl::Form->new;
 	$curlForm->formadd("requestID", "" . $jobId);
+	$curlForm->formadd("totalSubs", "" . $numTotal);
+	$curlForm->formadd("completedSubs", "" . $numTotal);
 	$curlForm->formadd("fileName", $origFilename);
 	$curlForm->formadd("error", $errorMessage);
 	
@@ -812,13 +814,13 @@ sub connectDb {
 #
 #####
 sub reportResults {
-	my ($config, $jobId, $tmpNames, $origFilename) = @_;
+	my ($config, $jobId, $tmpNames, $origFilenamei, $totalNum) = @_;
 	
 	my $jobPath = $config->{'work dir'} . "/" . $jobId;
 	
 	# if the call-back URL is defined, perform call-back
 	if (defined($config->{'call-back url'})) {
-		performCallBack($jobId, $origFilename, $tmpNames);
+		performCallBack($jobId, $origFilename, $tmpNames, undef, $totalNum);
 		
 		# initialize a DB connection
 		my $dbh = connectDb($config);
@@ -904,7 +906,7 @@ sub complain {
 	
 	# if call-back defined, send back erroneous call-back
 	if (defined($config->{'call-back url'})) {
-		performCallBack($jobId, $origFilename, undef, $errMsg);
+		performCallBack($jobId, $origFilename, undef, $errMsg, 0);
 	}
 }
 
