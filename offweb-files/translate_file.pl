@@ -492,7 +492,7 @@ sub cleanup {
 #
 #####
 sub reportProgress {
-	my ($config, $jobId, $numTotal, $numDone);
+	my ($config, $jobId, $numTotal, $numDone) = @_;
 	
 	my $curl = WWW::Curl::Easy->new;
 
