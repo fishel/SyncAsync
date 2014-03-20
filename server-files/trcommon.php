@@ -1,9 +1,9 @@
 <?php
 	# NB! set the path to your config file here:
         $configFileName = "/var/www/AsyncTrSrv/offweb-files/config.ini";
-	$config = loadConfig($configFileName);
-        #$config = "fail";
-	#die("please update trcommon.php with your personal path to the config.ini file, and then comment this line out");
+	#$config = loadConfig("/home/mphi/offweb/SyncAsync/offweb-files/config.ini");
+	$config = "fail";
+	die("please update trcommon.php with your personal path to the config.ini file, and then comment this line out");
 	
 	#path to the SQLite DB file
 	$dbPath = $config["db path"];
@@ -166,6 +166,11 @@
 		$host = str_replace(array("http://", "https://", "/RPC2"), array("", "", ""), $rawhost);
 
 		$fp = fsockopen($host, -1, $errno, $errstr);
+		
+		if (!$fp) {
+			$fp = fsockopen($host, -1, $errno, $errstr);
+		}
+		
 		if ($fp) {
 			$query = "POST /RPC2 HTTP/1.0\nUser_Agent: My Client\nHost: ".$host."\nContent-Type: text/xml\nContent-Length: 3\n\nXXX\n";
 

@@ -51,6 +51,8 @@ if ($@) {
 	complain($config, $jobId, $origFilename, $@);
 }
 
+print "finished\n";
+
 #####################################################
 sub processFile {
 	my ($langPair, $jobId, $origFilename, $config) = @_;
@@ -93,7 +95,7 @@ sub processFile {
 	my @subs = readSubtitles($inFh);
 	close($inFh);
 	
-	translateSubtitles(\@subs, $tmpFilenames->{'transl'}, $config, $translProxy, $recaseProxy, $langPair, $ua);
+	translateSubtitles(\@subs, $tmpFilenames->{'transl'}, $config, $translProxy, $recaseProxy, $langPair, $ua, $jobId);
 
 	# de-tokenize output using the configurated external script
 	doDeTokenization($config, $tmpFilenames, $langPair);
@@ -114,7 +116,7 @@ sub processFile {
 #
 #####
 sub translateSubtitles {
-	my ($subs, $outfile, $config, $translProxy, $recaseProxy, $langPair, $ua) = @_;
+	my ($subs, $outfile, $config, $translProxy, $recaseProxy, $langPair, $ua, $jobId) = @_;
 	
 	#my $subs = shared_clone($nonsharedSubs);
 	
@@ -126,6 +128,9 @@ sub translateSubtitles {
 	if ($maxThreads < 1) {
 		$maxThreads = 1;
 	}
+	
+	my $cellCount = 0;
+	my $cellTotal = scalar @$subs;
 	
 	print "DEBUG max threads: $maxThreads\n";
 	
@@ -141,12 +146,19 @@ sub translateSubtitles {
 			$countThreads = scalar threads->list(threads::running);
 		}
 		
-		#$cell->{'thread'} = threads->create(\&translateOneSubtitle, $config, $cell, $translProxy, $recaseProxy, $langPair, $ua);
-		$cell->{'output'} = finalizeRecasing(translateOneSubtitle($config, $cell, $translProxy, $recaseProxy, $langPair, $ua));
+		$cellCount++;
+		
+		#every 32 subtitles
+		unless ($cellCount % 0b11111) {
+			reportProgress($config, $jobId, $cellTotal, $cellCount);
+		}
+		
+		$cell->{'thread'} = threads->create(\&translateOneSubtitle, $config, $cell, $translProxy, $recaseProxy, $langPair, $ua);
+		#$cell->{'output'} = finalizeRecasing(translateOneSubtitle($config, $cell, $translProxy, $recaseProxy, $langPair, $ua));
 	}
 		
 	for my $cell (@$subs) {
-		#$cell->{'output'} = finalizeRecasing($cell->{'thread'}->join());
+		$cell->{'output'} = finalizeRecasing($cell->{'thread'}->join());
 		displayResults($outFh, $cell);
 	}
 	
@@ -479,6 +491,38 @@ sub cleanup {
 #####
 #
 #####
+sub reportProgress {
+	my ($config, $jobId, $numTotal, $numDone);
+	
+	my $curl = WWW::Curl::Easy->new;
+
+	my $curlForm = WWW::Curl::Form->new;
+	$curlForm->formadd("requestID", "" . $jobId);
+	$curlForm->formadd("totalSubs", "" . $numTotal);
+	$curlForm->formadd("completedSubs", "" . $numDone);
+
+	$curl->setopt(CURLOPT_HTTPPOST, $curlForm);
+
+	$curl->setopt(CURLOPT_HEADER, 1);
+	$curl->setopt(CURLOPT_URL, $config->{'call-back url'});
+
+	my $response_body;
+	$curl->setopt(CURLOPT_WRITEDATA, \$response_body);
+
+	# Starts the actual request
+	my $retcode = $curl->perform;
+	
+	unless ($retcode == 0) {
+		die("An error happened at progress update: $retcode " .
+			$curl->strerror($retcode) . "; " . $curl->errbuf . "\n");
+	}
+	
+	print "DEBUG: progress update server response:\n$response_body;\n";
+}
+
+#####
+#
+#####
 sub performCallBack {
 	my ($jobId, $origFilename, $resultPaths, $errorMessage) = @_;
 	
@@ -490,9 +534,9 @@ sub performCallBack {
 	$curlForm->formadd("error", $errorMessage);
 	
 	if (defined($resultPaths)) {
-		print "adding file\n";
+		#print "adding file\n";
 		$curlForm->formaddfile($resultPaths->{'output'}, "file", "multipart/form-data");
-		print "adding srt file too\n";
+		#print "adding srt file too\n";
 		$curlForm->formaddfile($resultPaths->{'srt'}, "srtfile", "multipart/form-data");
 	}
 
