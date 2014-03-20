@@ -149,7 +149,7 @@ sub translateSubtitles {
 		$cellCount++;
 		
 		#every 32 subtitles
-		unless ($cellCount % 0b11111) {
+		unless ($cellCount & 0b11111) {
 			reportProgress($config, $jobId, $cellTotal, $cellCount);
 		}
 		
